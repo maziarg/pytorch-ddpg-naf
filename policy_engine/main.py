@@ -1,21 +1,16 @@
 import argparse
-import math
-from collections import namedtuple
-from itertools import count
-from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
 import gym
 import numpy as np
-from gym import wrappers
 
 import torch
-from ddpg import DDPG
-from naf import NAF
-from normalized_actions import NormalizedActions
-from ounoise import OUNoise
-from param_noise import AdaptiveParamNoiseSpec, ddpg_distance_metric
-from replay_memory import ReplayMemory, Transition
+from policy_engine.ddpg import DDPG
+from policy_engine.naf import NAF
+from policy_engine.normalized_actions import NormalizedActions
+from policy_engine.ounoise import OUNoise
+from policy_engine.param_noise import AdaptiveParamNoiseSpec, ddpg_distance_metric
+from policy_engine.replay_memory import ReplayMemory, Transition
 
 parser = argparse.ArgumentParser(description='PyTorch REINFORCE example')
 parser.add_argument('--algo', default='NAF',
