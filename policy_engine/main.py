@@ -1,10 +1,16 @@
 import argparse
 from tensorboardX import SummaryWriter
-
+import sys
 import gym
 import numpy as np
-
 import torch
+import os
+os.environ['LD_LIBRARY_PATH']="$LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/hossein/.mujoco/mujoco200/bin:/usr/lib/nvidia-384:$HOME/.mujoco/mujoco200/bin pip install mujoco-py"
+# os.environ['MUJOCO_PY_MJKEY_PATH']="/home/hossein/.mujoco/mjkey.txt"
+# os.environ['MUJOCO_PY_MUJOCO_PATH']="/home/hossein/.mujoco/mujoco150"
+
+
+sys.path.insert(0, '/home/hossain_aboutalebi_gmail_com/pytorch-ddpg-naf')
 from policy_engine.ddpg import DDPG
 from policy_engine.naf import NAF
 from policy_engine.normalized_actions import NormalizedActions
@@ -44,7 +50,6 @@ parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
 parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 1000000)')
 args = parser.parse_args()
-
 env = NormalizedActions(gym.make(args.env_name))
 
 writer = SummaryWriter()
