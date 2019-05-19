@@ -102,12 +102,12 @@ class Critic(nn.Module):
         return V
 
 class DDPG(object):
-    def __init__(self, gamma, tau, hidden_size, num_inputs, action_space):
+    def __init__(self, gamma, tau, hidden_size, poly_rl_exploration_flag,num_inputs, action_space):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.num_inputs = num_inputs
         self.action_space = action_space
-
+        self.poly_rl_exploration_flag=poly_rl_exploration_flag
         self.actor = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.actor_target = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.actor_perturbed = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
