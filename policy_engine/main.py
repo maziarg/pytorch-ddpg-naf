@@ -2,10 +2,10 @@ import argparse
 from tensorboardX import SummaryWriter
 import sys
 import gym
+import roboschool
 import numpy as np
 import torch
 import os
-os.environ['LD_LIBRARY_PATH']="$LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/hossein/.mujoco/mujoco200/bin:/usr/lib/nvidia-384:$HOME/.mujoco/mujoco200/bin pip install mujoco-py"
 # os.environ['MUJOCO_PY_MJKEY_PATH']="/home/hossein/.mujoco/mjkey.txt"
 # os.environ['MUJOCO_PY_MUJOCO_PATH']="/home/hossein/.mujoco/mujoco150"
 
@@ -21,7 +21,7 @@ from policy_engine.replay_memory import ReplayMemory, Transition
 parser = argparse.ArgumentParser(description='PyTorch REINFORCE example')
 parser.add_argument('--algo', default='NAF',
                     help='algorithm to use: DDPG | NAF')
-parser.add_argument('--env-name', default="HalfCheetah-v2",
+parser.add_argument('--env-name', default="RoboschoolHopper-v1",
                     help='name of the environment to run')
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
@@ -33,6 +33,8 @@ parser.add_argument('--noise_scale', type=float, default=0.3, metavar='G',
                     help='initial noise scale (default: 0.3)')
 parser.add_argument('--final_noise_scale', type=float, default=0.3, metavar='G',
                     help='final noise scale (default: 0.3)')
+parser.add_argument('--poly_rl_version', action='store_false',
+                    help='for using poly_rl exploration')
 parser.add_argument('--exploration_end', type=int, default=100, metavar='N',
                     help='number of episodes with noise (default: 100)')
 parser.add_argument('--seed', type=int, default=4, metavar='N',
@@ -88,11 +90,11 @@ for i_episode in range(args.num_episodes):
     episode_reward = 0
     while True:
         action = agent.select_action(state, ounoise, param_noise)
-        next_state, reward, done, _ = env.step(action.numpy()[0])
+        next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
         total_numsteps += 1
         episode_reward += reward
 
-        action = torch.Tensor(action)
+        action = torch.Tensor(action.cpu())
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
         reward = torch.Tensor([reward])
@@ -134,7 +136,7 @@ for i_episode in range(args.num_episodes):
         while True:
             action = agent.select_action(state)
 
-            next_state, reward, done, _ = env.step(action.numpy()[0])
+            next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
             episode_reward += reward
 
             next_state = torch.Tensor([next_state])
