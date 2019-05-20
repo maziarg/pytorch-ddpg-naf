@@ -1,6 +1,7 @@
 import sys
 
 import torch
+import os
 import torch.nn as nn
 from torch.optim import Adam
 from torch.autograd import Variable
@@ -87,7 +88,7 @@ class NAF:
     def __init__(self, gamma, tau, hidden_size, num_inputs, action_space):
         self.action_space = action_space
         self.num_inputs = num_inputs
-        
+
         self.model = Policy(hidden_size, num_inputs, action_space)
         self.target_model = Policy(hidden_size, num_inputs, action_space)
         self.optimizer = Adam(self.model.parameters(), lr=1e-3)
@@ -138,7 +139,7 @@ class NAF:
             os.makedirs('models/')
 
         if model_path is None:
-            model_path = "models/naf_{}_{}".format(env_name, suffix) 
+            model_path = "models/naf_{}_{}".format(env_name, suffix)
         print('Saving model to {}'.format(actor_path))
         torch.save(self.model.state_dict(), model_path)
 

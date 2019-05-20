@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.optim import Adam
 from torch.autograd import Variable
 import torch.nn.functional as F
+import os
 
 def soft_update(target, source, tau):
     for target_param, param in zip(target.parameters(), source.parameters()):
@@ -123,21 +124,27 @@ class DDPG(object):
         hard_update(self.actor_target, self.actor)  # Make sure target is with the same weight
         hard_update(self.critic_target, self.critic)
 
+    #This is where the behavioural policy is called
+    def select_action(self, state, action_noise=None):
+        if self.poly_rl_exploration_flag is False:
+            #
+            self.actor.eval()
+            if param_noise is not None:
+                mu = self.actor_perturbed((Variable(state).to(self.device)))
+            else:
+                mu = self.actor((Variable(state).to(self.device)))
 
-    def select_action(self, state, action_noise=None, param_noise=None):
-        self.actor.eval()
-        if param_noise is not None: 
-            mu = self.actor_perturbed((Variable(state).to(self.device)))
+            self.actor.train()
+            mu = mu.data
+
+            if action_noise is not None:
+                mu += torch.Tensor(action_noise.noise()).to(self.device)
+
+            return mu.clamp(-1, 1)
         else:
-            mu = self.actor((Variable(state).to(self.device)))
+            #activates the poly_rl_exploration policy
+            return
 
-        self.actor.train()
-        mu = mu.data
-
-        if action_noise is not None:
-            mu += torch.Tensor(action_noise.noise()).to(self.device)
-
-        return mu.clamp(-1, 1)
 
 
     def update_parameters(self, batch):
@@ -181,8 +188,8 @@ class DDPG(object):
         hard_update(self.actor_perturbed, self.actor)
         params = self.actor_perturbed.state_dict()
         for name in params:
-            if 'ln' in name: 
-                pass 
+            if 'ln' in name:
+                pass
             param = params[name]
             param += torch.randn(param.shape) * param_noise.current_stddev
 
