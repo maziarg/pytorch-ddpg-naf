@@ -6,6 +6,9 @@ from math import sqrt
 From OpenAI Baselines:
 https://github.com/openai/baselines/blob/master/baselines/ddpg/noise.py
 """
+
+#This is another type of noise.
+# Not used in the current version of DDPG implementation.
 class AdaptiveParamNoiseSpec(object):
     def __init__(self, initial_stddev=0.1, desired_action_stddev=0.2, adaptation_coefficient=1.01):
         """
