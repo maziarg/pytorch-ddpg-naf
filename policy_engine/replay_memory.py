@@ -7,7 +7,7 @@ from collections import namedtuple
 Transition = namedtuple('Transition', ('state', 'action', 'mask', 'next_state', 'reward'))
 
 
-# Important Note: This replay memory shares memory with different batchs
+# Important Note: This replay memory shares memory with different episodes
 class ReplayMemory(object):
 
     def __init__(self, capacity):

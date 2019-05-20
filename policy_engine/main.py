@@ -99,7 +99,7 @@ else:
                  poly_rl_exploration_flag=args.poly_rl_exploration_flag,
                  num_inputs=env.observation_space.shape[0], action_space=env.action_space)
 
-# Important Note: This replay memory shares memory with different batchs
+# Important Note: This replay memory shares memory with different episodes
 memory = ReplayMemory(args.replay_size)
 
 # Adds noise to the selected action by the policy"
