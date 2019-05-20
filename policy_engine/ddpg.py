@@ -106,6 +106,7 @@ class DDPG(object):
     def __init__(self, gamma, tau, hidden_size, poly_rl_exploration_flag,num_inputs, action_space,lr_critic,lr_actor):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.poly_rl_alg=None
         self.num_inputs = num_inputs
         self.action_space = action_space
         self.poly_rl_exploration_flag=poly_rl_exploration_flag
@@ -134,7 +135,7 @@ class DDPG(object):
 
             return mu.clamp(-1, 1)
         else:
-            #activates the poly_rl_exploration policy
+            self.poly_rl_alg.select_action(state,previous_action)
             return
 
     #This function samples from target policy for test
@@ -182,6 +183,8 @@ class DDPG(object):
 
         return value_loss.item(), policy_loss.item()
 
+    def set_poly_rl_alg(self,poly_rl_alg):
+        self.poly_rl_alg=poly_rl_alg
 
     def save_model(self, env_name, suffix="", actor_path=None, critic_path=None):
         if not os.path.exists('models/'):

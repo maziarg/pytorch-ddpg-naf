@@ -92,6 +92,12 @@ parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
 
 # *********************************** Poly_Rl Setting ********************************************
 
+parser.add_argument('--betta', type=float, default=0.001)
+
+parser.add_argument('--epsilon', type=float, default=0.999)
+
+parser.add_argument('--sigma_squared', type=float, default=0.04)
+
 
 # retrieve arguments set by the user
 args = parser.parse_args()
@@ -116,9 +122,11 @@ else:
                  num_inputs=env.observation_space.shape[0], action_space=env.action_space,
                  lr_actor=args.lr_actor, lr_critic=args.lr_critic)
 
+poly_rl_alg=None
 if (args.poly_rl_exploration_flag):
     poly_rl_alg = PolyRL(gamma=args.gamma, betta=args.betta, epsilon=args.epsilon, sigma_squared=args.sigma_squared,
                          actor_target_function=agent.select_action_from_target_actor, env=env)
+    agent.set_poly_rl_alg(poly_rl_alg)
 
 # Important Note: This replay memory shares memory with different episodes
 memory = ReplayMemory(args.replay_size)
@@ -139,8 +147,12 @@ for i_episode in range(args.num_episodes):
                                                                           i_episode) / args.exploration_end + args.final_noise_scale
         ounoise.reset()
 
+    if (args.poly_rl_exploration_flag):
+        poly_rl_alg.reset_parameters_in_beginning_of_episode()
+
     episode_reward = 0
     previous_action = None
+    previous_state = state
     while True:
         action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
         next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
@@ -152,7 +164,9 @@ for i_episode in range(args.num_episodes):
         next_state = torch.Tensor([next_state])
         reward = torch.Tensor([reward])
         memory.push(state, action, mask, next_state, reward)
+        previous_state=state
         state = next_state
+        poly_rl_alg.update_parameters(previous_state=previous_state,new_state=state)
 
         # If the batch_size is bigger than memory then we do not need memory replay! lol
         if len(memory) > args.batch_size:
