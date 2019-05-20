@@ -29,8 +29,8 @@ parser = argparse.ArgumentParser(description='PyTorch poly Rl exploration implem
 parser.add_argument('--algo', default='DDPG',
                     help='algorithm to use: DDPG | NAF')
 
-parser.add_argument('--path_result_saving', action='store_false',
-                    help='for making reward sparse. Default=True')
+parser.add_argument('-o', '--output_path', default=os.path.expanduser('~') + '/results_exploration_policy',
+                    help='output path for files produced by the agent')
 
 parser.add_argument('--sparse_reward', action='store_false',
                     help='for making reward sparse. Default=True')
