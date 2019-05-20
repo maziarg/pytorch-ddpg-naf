@@ -40,7 +40,7 @@ class PolyRL():
         if (self.t == 0):
             return torch.FloatTensor(1, 6).uniform_(self.min_action_limit, self.max_action_limit)
 
-        elif ((self.delta_g > self.U) or (self.delta_g < self.L)):
+        elif ((self.delta_g > self.U) or (self.delta_g < self.L) or (self.C_theta<=0)):
             action = self.actor_target_function(state)
             self.reset_parameters_PolyRL()
             return action
