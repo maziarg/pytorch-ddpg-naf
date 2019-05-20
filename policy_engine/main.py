@@ -29,6 +29,9 @@ parser = argparse.ArgumentParser(description='PyTorch poly Rl exploration implem
 parser.add_argument('--algo', default='DDPG',
                     help='algorithm to use: DDPG | NAF')
 
+parser.add_argument('--sparse_reward', action='store_false',
+                    help='for making reward sparse. Default=True')
+
 parser.add_argument('--env-name', default="RoboschoolHalfCheetah-v1",
                     help='name of the environment to run')
 
@@ -155,7 +158,7 @@ for i_episode in range(args.num_episodes):
     previous_state = state
     while True:
         action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
-        next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
+        next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
         total_numsteps += 1
         episode_reward += reward
         previous_action = action
@@ -163,7 +166,17 @@ for i_episode in range(args.num_episodes):
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
         reward = torch.Tensor([reward])
-        memory.push(state, action, mask, next_state, reward)
+
+        #for reward sparsity TODO: check if this sparsity makes sense
+        if(args.sparse_reward):
+            if (env.env.body_xyz[0]-env.env.start_pos_x>5):
+                modified_reward=torch.Tensor([1])
+            else:
+                modified_reward = torch.Tensor([0])
+        else:
+            modified_reward=reward
+
+        memory.push(state, action, mask, next_state, modified_reward)
         previous_state=state
         state = next_state
         if(args.poly_rl_exploration_flag):

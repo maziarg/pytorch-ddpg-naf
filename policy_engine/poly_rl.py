@@ -20,13 +20,14 @@ class PolyRL():
         self.min_action_limit = min(env.action_space.low)
         self.betta = betta
         self.actor_target_function = actor_target_function
-        self.number_of_goal = 1 #Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
+        self.number_of_goal = 1  # TODO: Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
         self.i = 1
         self.g = 0
         self.C_vector = torch.zeros(1, env.observation_space.shape[0])
         self.delta_g = 0
         self.b = 0
-        self.B_vector = torch.zeros(1, env.observation_space.shape[0]) #Maziar please check! what is its shape? I am not sure if this is correct!
+        self.B_vector = torch.zeros(1, env.observation_space.shape[
+            0])  # TODO: Maziar please check! what is its shape? I am not sure if this is correct!
         self.C_theta = 0
         self.L = -1
         self.U = 1
@@ -96,26 +97,26 @@ class PolyRL():
             self.C_theta = ((self.i - 2) * self.C_theta + torch.dot(self.w_new.reshape(-1),
                                                                     self.w_old.reshape(-1)).item() / (
                                     norm_w_new * norm_w_old)) / (self.i - 1)
-            Lp = 1 / abs(np.log(self.C_theta)) #Maziar please check! Sometimes gives invalid value for log!
+            Lp = 1 / abs(np.log(self.C_theta))  # TODO: Maziar please check! Sometimes gives invalid value for log!
             K = 0
             for j in range(1, self.i):
                 K = K + j * np.exp((j - self.i) / Lp)
             norm_B_vector = np.linalg.norm(self.B_vector.numpy(), ord=2)
             last_term = (1 / (self.i - 1)) * self.old_g
 
-            #Upper bound and lower bound are computed here
+            # Upper bound and lower bound are computed here
             self.U = (1 / ((self.i ** 3) * (1 - self.epsilon))) * (
-                    (self.i ** 2) * self.b + (norm_B_vector ** 2) + 2 * self.i * self.b * K)-last_term
+                    (self.i ** 2) * self.b + (norm_B_vector ** 2) + 2 * self.i * self.b * K) - last_term
 
             self.L = (1 - np.sqrt(2 * self.epsilon)) * (
                     self.b / self.i + (((self.i - 1) * (self.i - 2)) / self.i ** 2) * self.b * np.exp(
-                (-abs(self.i - 1))/Lp)+(1/self.i**3)*norm_B_vector**2)-last_term
+                (-abs(self.i - 1)) / Lp) + (1 / self.i ** 3) * norm_B_vector ** 2) - last_term
 
-            self.L=max(0,self.L)
+            self.L = max(0, self.L)
 
-        self.b=((self.i-1)*self.b+norm_w_new**2)/self.i
-        self.C_vector=((self.i-1)*self.C_vector+new_state)/self.i
-        self.t+=1
+        self.b = ((self.i - 1) * self.b + norm_w_new ** 2) / self.i
+        self.C_vector = ((self.i - 1) * self.C_vector + new_state) / self.i
+        self.t += 1
 
     # This function resets the parameters of class
     def reset_parameters_PolyRL(self):
