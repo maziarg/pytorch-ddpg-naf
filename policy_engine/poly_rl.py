@@ -20,7 +20,7 @@ class PolyRL():
         self.min_action_limit = min(env.action_space.low)
         self.betta = betta
         self.actor_target_function = actor_target_function
-        self.number_of_goal = 1  # TODO: Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
+        self.number_of_goal = 0.001  # TODO: Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
         self.i = 1
         self.g = 0
         self.C_vector = torch.zeros(1, env.observation_space.shape[0])
