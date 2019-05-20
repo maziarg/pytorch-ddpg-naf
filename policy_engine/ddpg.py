@@ -135,8 +135,7 @@ class DDPG(object):
 
             return mu.clamp(-1, 1)
         else:
-            self.poly_rl_alg.select_action(state,previous_action)
-            return
+            return self.poly_rl_alg.select_action(state,previous_action)
 
     #This function samples from target policy for test
     def select_action_from_target_actor(self,state):

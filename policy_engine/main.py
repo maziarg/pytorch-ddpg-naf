@@ -77,8 +77,8 @@ parser.add_argument('--noise_scale', type=float, default=0.3, metavar='G',
 parser.add_argument('--final_noise_scale', type=float, default=0.3, metavar='G',
                     help='final noise scale (default: 0.3)')
 
-parser.add_argument('--poly_rl_exploration_flag', action='store_true',
-                    help='for using poly_rl exploration')
+parser.add_argument('--poly_rl_exploration_flag', action='store_false',
+                    help='for using poly_rl exploration. Default=True')
 
 parser.add_argument('--exploration_end', type=int, default=100, metavar='N',
                     help='number of episodes with noise (default: 100)')
@@ -166,7 +166,8 @@ for i_episode in range(args.num_episodes):
         memory.push(state, action, mask, next_state, reward)
         previous_state=state
         state = next_state
-        poly_rl_alg.update_parameters(previous_state=previous_state,new_state=state)
+        if(args.poly_rl_exploration_flag):
+            poly_rl_alg.update_parameters(previous_state=previous_state,new_state=state)
 
         # If the batch_size is bigger than memory then we do not need memory replay! lol
         if len(memory) > args.batch_size:
