@@ -103,7 +103,7 @@ class Critic(nn.Module):
         return V
 
 class DDPG(object):
-    def __init__(self, gamma, tau, hidden_size, poly_rl_exploration_flag,num_inputs, action_space):
+    def __init__(self, gamma, tau, hidden_size, poly_rl_exploration_flag,num_inputs, action_space,lr_critic,lr_actor):
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.num_inputs = num_inputs
@@ -111,12 +111,10 @@ class DDPG(object):
         self.poly_rl_exploration_flag=poly_rl_exploration_flag
         self.actor = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.actor_target = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
-        self.actor_perturbed = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
-        self.actor_optim = Adam(self.actor.parameters(), lr=1e-4)
-
+        self.actor_optim = Adam(self.actor.parameters(), lr=lr_actor)
         self.critic = Critic(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.critic_target = Critic(hidden_size, self.num_inputs, self.action_space).to(self.device)
-        self.critic_optim = Adam(self.critic.parameters(), lr=1e-3)
+        self.critic_optim = Adam(self.critic.parameters(), lr=lr_critic)
 
         self.gamma = gamma
         self.tau = tau
@@ -129,11 +127,7 @@ class DDPG(object):
         if self.poly_rl_exploration_flag is False:
             #
             self.actor.eval()
-            if param_noise is not None:
-                mu = self.actor_perturbed((Variable(state).to(self.device)))
-            else:
-                mu = self.actor((Variable(state).to(self.device)))
-
+            mu = self.actor((Variable(state).to(self.device)))
             self.actor.train()
             mu = mu.data
 
@@ -148,50 +142,40 @@ class DDPG(object):
 
 
     def update_parameters(self, batch):
-        state_batch = Variable(torch.cat(batch.state))
-        action_batch = Variable(torch.cat(batch.action))
-        reward_batch = Variable(torch.cat(batch.reward))
-        mask_batch = Variable(torch.cat(batch.mask))
-        next_state_batch = Variable(torch.cat(batch.next_state)).to(self.device)
-        
-        next_action_batch = self.actor_target(next_state_batch.to(self.device))
-        next_state_action_values = self.critic_target(next_state_batch, next_action_batch)
 
+        state_batch = Variable(torch.cat(batch.state)).to(self.device)
+        action_batch = Variable(torch.cat(batch.action)).to(self.device)
+        reward_batch = Variable(torch.cat(batch.reward)).to(self.device)
+        mask_batch = Variable(torch.cat(batch.mask)).to(self.device)
+        next_state_batch = Variable(torch.cat(batch.next_state)).to(self.device)
+        next_action_batch = self.actor_target(next_state_batch)
+        next_state_action_values = self.critic_target(next_state_batch, next_action_batch)
         reward_batch = reward_batch.unsqueeze(1)
         mask_batch = mask_batch.unsqueeze(1)
+
         #We may need to change the following line for speed up (cuda to cpu operation)
-        expected_state_action_batch = reward_batch.to(self.device) + (self.gamma * mask_batch.to(self.device) * next_state_action_values.to(self.device))
+        expected_state_action_batch = reward_batch + (self.gamma * mask_batch * next_state_action_values)
 
+        #updating critic network
         self.critic_optim.zero_grad()
-
-        state_action_batch = self.critic((state_batch.to(self.device)), (action_batch.to(self.device)))
-
+        state_action_batch = self.critic((state_batch), (action_batch))
         value_loss = F.mse_loss(state_action_batch, expected_state_action_batch)
         value_loss.backward()
         self.critic_optim.step()
 
+        #updating actor network
         self.actor_optim.zero_grad()
-
-        policy_loss = -self.critic((state_batch.to(self.device)),self.actor((state_batch.to(self.device))))
-
+        policy_loss = -self.critic((state_batch),self.actor((state_batch)))
         policy_loss = policy_loss.mean()
         policy_loss.backward()
         self.actor_optim.step()
 
+        #updating target policy networks with soft update
         soft_update(self.actor_target, self.actor, self.tau)
         soft_update(self.critic_target, self.critic, self.tau)
 
         return value_loss.item(), policy_loss.item()
 
-    def perturb_actor_parameters(self, param_noise):
-        """Apply parameter noise to actor model, for exploration"""
-        hard_update(self.actor_perturbed, self.actor)
-        params = self.actor_perturbed.state_dict()
-        for name in params:
-            if 'ln' in name:
-                pass
-            param = params[name]
-            param += torch.randn(param.shape) * param_noise.current_stddev
 
     def save_model(self, env_name, suffix="", actor_path=None, critic_path=None):
         if not os.path.exists('models/'):

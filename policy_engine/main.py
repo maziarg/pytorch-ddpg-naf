@@ -20,7 +20,9 @@ from policy_engine.replay_memory import ReplayMemory, Transition
 
 parser = argparse.ArgumentParser(description='PyTorch poly Rl exploration implementation')
 
-parser.add_argument('--algo', default='NAF',
+# MAX_PATH_LEN =  20000 # max length of an episode. TODO: add this feature to episode if needed
+
+parser.add_argument('--algo', default='DDPG',
                     help='algorithm to use: DDPG | NAF')
 
 parser.add_argument('--env-name', default="RoboschoolHalfCheetah-v1",
@@ -29,8 +31,15 @@ parser.add_argument('--env-name', default="RoboschoolHalfCheetah-v1",
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 
+#This is the factor for updating the target policy with delay based on behavioural policy
 parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='discount factor for model (default: 0.001)')
+
+parser.add_argument('--lr_actor', type=float, default=1e-4,
+                    help='learning rate for actor policy')
+
+parser.add_argument('--lr_critic', type=float, default=1e-3,
+                    help='learning rate for critic policy')
 
 # Note: The following noise are for the behavioural policy of the pure DDPG without the poly_rl policy
 parser.add_argument('--ou_noise', type=bool, default=True,
@@ -97,7 +106,8 @@ if args.algo == "NAF":
 else:
     agent = DDPG(gamma=args.gamma, tau=args.tau, hidden_size=args.hidden_size,
                  poly_rl_exploration_flag=args.poly_rl_exploration_flag,
-                 num_inputs=env.observation_space.shape[0], action_space=env.action_space)
+                 num_inputs=env.observation_space.shape[0], action_space=env.action_space,
+                 lr_actor=args.lr_actor,lr_critic=args.lr_critic)
 
 # Important Note: This replay memory shares memory with different episodes
 memory = ReplayMemory(args.replay_size)
@@ -161,7 +171,6 @@ for i_episode in range(args.num_episodes):
         episode_reward = 0
         while True:
             action = agent.select_action(state)
-
             next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
             episode_reward += reward
 
