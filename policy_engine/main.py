@@ -161,10 +161,10 @@ for i_episode in range(args.num_episodes):
     previous_state = state
     while True:
         action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
+        previous_action = action
         next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
         total_numsteps += 1
         episode_reward += reward
-        previous_action = action
         action = torch.Tensor(action.cpu())
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
@@ -185,7 +185,6 @@ for i_episode in range(args.num_episodes):
         if(args.poly_rl_exploration_flag):
             poly_rl_alg.update_parameters(previous_state=previous_state,new_state=state)
 
-        # If the batch_size is bigger than memory then we do not need memory replay! lol
         if len(memory) > args.batch_size:
             for _ in range(args.updates_per_step):
                 transitions = memory.sample(args.batch_size)

@@ -20,7 +20,7 @@ class PolyRL():
         self.min_action_limit = min(env.action_space.low)
         self.betta = betta
         self.actor_target_function = actor_target_function
-        self.number_of_goal = 0.001  # TODO: Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
+        self.number_of_goal = 0  # TODO: Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
         self.i = 1
         self.g = 0
         self.C_vector = torch.zeros(1, env.observation_space.shape[0])
@@ -38,7 +38,6 @@ class PolyRL():
 
     def select_action(self, state, previous_action):
         if (self.t == 0):
-            self.t += 1
             return torch.FloatTensor(1, 6).uniform_(self.min_action_limit, self.max_action_limit)
 
         elif ((self.delta_g > self.U) or (self.delta_g < self.L)):
@@ -52,7 +51,8 @@ class PolyRL():
 
     # This function resets parameters of PolyRl every episode. Should be called in the beggining of every episode
     def reset_parameters_in_beginning_of_episode(self):
-        self.epsilon = 1 / (1 + self.betta) ** (self.number_of_goal ** 2)
+        if(self.number_of_goal!=0):
+            self.epsilon = 1 / (1 + self.betta) ** (self.number_of_goal ** 2)
         self.i = 1
         self.g = 0
         self.C_vector = torch.zeros(1, self.env.observation_space.shape[0])
@@ -68,6 +68,7 @@ class PolyRL():
         self.eta = None
 
     def sample_action_algorithm(self, previous_action):
+        previous_action=previous_action.cpu()
         P = torch.FloatTensor(previous_action.shape[1]).uniform_(self.min_action_limit, self.max_action_limit)
         D = torch.dot(P, previous_action.reshape(-1)).item()
         norm_previous_action = np.linalg.norm(previous_action.numpy(), ord=2)
@@ -93,14 +94,18 @@ class PolyRL():
         if (self.i != 1):
             Delta1 = previous_state - self.C_vector
             self.old_g = self.g
-            self.g = (1 / self.i) * self.g + (1 / self.i) * np.linalg.norm(Delta1.numpy(), ord=2) ** 2
+            self.g = ( (self.i-2)/(self.i-1)) * self.g + (1 / self.i) * np.linalg.norm(Delta1.numpy(), ord=2) ** 2
+            self.delta_g=self.g-self.old_g
             self.C_theta = ((self.i - 2) * self.C_theta + torch.dot(self.w_new.reshape(-1),
                                                                     self.w_old.reshape(-1)).item() / (
                                     norm_w_new * norm_w_old)) / (self.i - 1)
-            Lp = 1 / abs(np.log(self.C_theta))  # TODO: Maziar please check! Sometimes gives invalid value for log!
             K = 0
+
             for j in range(1, self.i):
-                K = K + j * np.exp((j - self.i) / Lp)
+                if(self.C_theta==1):
+                    K=K+j
+                else:
+                    K = K + j * np.exp((j - self.i) / (1 / abs(np.log(self.C_theta))))
             norm_B_vector = np.linalg.norm(self.B_vector.numpy(), ord=2)
             last_term = (1 / (self.i - 1)) * self.old_g
 
@@ -109,26 +114,33 @@ class PolyRL():
                     (self.i ** 2) * self.b + (norm_B_vector ** 2) + 2 * self.i * self.b * K) - last_term
 
             self.L = (1 - np.sqrt(2 * self.epsilon)) * (
-                    self.b / self.i + (((self.i - 1) * (self.i - 2)) / self.i ** 2) * self.b * np.exp(
-                (-abs(self.i - 1)) / Lp) + (1 / self.i ** 3) * norm_B_vector ** 2) - last_term
+                    self.b / self.i + (((self.i - 1) * (self.i - 2)) / self.i ** 2) * self.b * self.compute_correlation_decay() + (1 / self.i ** 3) * norm_B_vector ** 2) - last_term
 
             self.L = max(0, self.L)
 
         self.b = ((self.i - 1) * self.b + norm_w_new ** 2) / self.i
-        self.C_vector = ((self.i - 1) * self.C_vector + new_state) / self.i
+        self.C_vector = ((self.i - 1) * self.C_vector + previous_state) / self.i
         self.t += 1
+
+    def compute_correlation_decay(self):
+        if(self.C_theta==1):
+            return 1
+        else:
+            Lp=1 / abs(np.log(self.C_theta))
+            return np.exp((-abs(self.i - 1)) / Lp)
+
 
     # This function resets the parameters of class
     def reset_parameters_PolyRL(self):
         self.i = 1
         self.g = 0
-        self.C_vector = np.zeros(self.env.observation_space.shape[0])
+        self.C_vector = torch.zeros(self.env.observation_space.shape[0])
         self.delta_g = 0
         self.b = 0
-        self.B_vector = np.zeros(self.env.observation_space.shape[0])
+        self.B_vector = torch.zeros(self.env.observation_space.shape[0])
         self.C_theta = 0
         self.L = -1
         self.U = 1
         self.t = 0
-        self.w_new = np.zeros(self.env.observation_space.shape[0])
-        self.w_old = np.zeros(self.env.observation_space.shape[0])
+        self.w_new = torch.zeros(self.env.observation_space.shape[0])
+        self.w_old = torch.zeros(self.env.observation_space.shape[0])
