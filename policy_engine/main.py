@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import os
 
+from policy_engine.poly_rl import *
 from policy_engine.ddpg import DDPG
 from policy_engine.naf import NAF
 from policy_engine.normalized_actions import NormalizedActions
@@ -22,6 +23,9 @@ parser = argparse.ArgumentParser(description='PyTorch poly Rl exploration implem
 
 # MAX_PATH_LEN =  20000 # max length of an episode. TODO: add this feature to episode if needed
 
+
+# *********************************** Environment Setting ********************************************
+
 parser.add_argument('--algo', default='DDPG',
                     help='algorithm to use: DDPG | NAF')
 
@@ -31,7 +35,28 @@ parser.add_argument('--env-name', default="RoboschoolHalfCheetah-v1",
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 
-#This is the factor for updating the target policy with delay based on behavioural policy
+parser.add_argument('--seed', type=int, default=4, metavar='N',
+                    help='random seed (default: 4)')
+
+parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
+                    help='max episode length (default: 1000)')
+
+parser.add_argument('--num_episodes', type=int, default=1000, metavar='N',
+                    help='number of episodes (default: 1000)')
+
+parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
+                    help='model updates per simulator step (default: 5)')
+
+# Important: batch size here is different in semantics
+parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+                    help='batch size (default: 128). This is different from usual deep learning work'
+                         'where batch size infers parallel processing. Here, we currently do not have that as'
+                         'we update our parameters sequentially. Here, batch_size means minimum length that '
+                         'memory replay should have before strating to update model parameters')
+
+# *********************************** DDPG Setting ********************************************
+
+# This is the factor for updating the target policy with delay based on behavioural policy
 parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='discount factor for model (default: 0.001)')
 
@@ -58,38 +83,20 @@ parser.add_argument('--poly_rl_exploration_flag', action='store_true',
 parser.add_argument('--exploration_end', type=int, default=100, metavar='N',
                     help='number of episodes with noise (default: 100)')
 
-parser.add_argument('--seed', type=int, default=4, metavar='N',
-                    help='random seed (default: 4)')
-
-# Important: batch size here is different in semantics
-parser.add_argument('--batch_size', type=int, default=128, metavar='N',
-                    help='batch size (default: 128). This is different from usual deep learning work'
-                         'where batch size infers parallel processing. Here, we currently do not have that as'
-                         'we update our parameters sequentially. Here, batch_size means minimum length that '
-                         'memory replay should have before strating to update model parameters')
-
-parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
-                    help='max episode length (default: 1000)')
-
-parser.add_argument('--num_episodes', type=int, default=1000, metavar='N',
-                    help='number of episodes (default: 1000)')
-
 parser.add_argument('--hidden_size', type=int, default=128, metavar='N',
                     help='number of episodes (default: 128)')
-
-parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
-                    help='model updates per simulator step (default: 5)')
 
 # very important factor. Should be investigated in the future.
 parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
                     help='size of replay buffer (default: 1000000)')
 
+# *********************************** Poly_Rl Setting ********************************************
+
+
 # retrieve arguments set by the user
 args = parser.parse_args()
 
-# Important Note: This NormalizedActions class should be tested on each environment to make sure the ...
-# ... way it is normalzes the action is compatible with the environment. It might be better to remove it for now!
-env = NormalizedActions(gym.make(args.env_name))
+env = gym.make(args.env_name)
 
 # for tensorboard
 writer = SummaryWriter()
@@ -107,14 +114,17 @@ else:
     agent = DDPG(gamma=args.gamma, tau=args.tau, hidden_size=args.hidden_size,
                  poly_rl_exploration_flag=args.poly_rl_exploration_flag,
                  num_inputs=env.observation_space.shape[0], action_space=env.action_space,
-                 lr_actor=args.lr_actor,lr_critic=args.lr_critic)
+                 lr_actor=args.lr_actor, lr_critic=args.lr_critic)
+
+if (args.poly_rl_exploration_flag):
+    poly_rl_alg = PolyRL(gamma=args.gamma, betta=args.betta, epsilon=args.epsilon, sigma_squared=args.sigma_squared,
+                         actor_target_function=agent.select_action_from_target_actor, env=env)
 
 # Important Note: This replay memory shares memory with different episodes
 memory = ReplayMemory(args.replay_size)
 
 # Adds noise to the selected action by the policy"
 ounoise = OUNoise(env.action_space.shape[0]) if args.ou_noise else None
-
 
 rewards = []
 total_numsteps = 0
@@ -130,19 +140,18 @@ for i_episode in range(args.num_episodes):
         ounoise.reset()
 
     episode_reward = 0
+    previous_action = None
     while True:
-        action = agent.select_action(state, ounoise)
+        action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
         next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
         total_numsteps += 1
         episode_reward += reward
-
+        previous_action = action
         action = torch.Tensor(action.cpu())
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
         reward = torch.Tensor([reward])
-
         memory.push(state, action, mask, next_state, reward)
-
         state = next_state
 
         # If the batch_size is bigger than memory then we do not need memory replay! lol
@@ -164,13 +173,13 @@ for i_episode in range(args.num_episodes):
 
     rewards.append(episode_reward)
 
-    #This section is for computing the target policy perfomance
-    #The environment is reset every 10 episodes automatically and we compute the target policy reward.
+    # This section is for computing the target policy perfomance
+    # The environment is reset every 10 episodes automatically and we compute the target policy reward.
     if i_episode % 10 == 0:
         state = torch.Tensor([env.reset()])
         episode_reward = 0
         while True:
-            action = agent.select_action(state)
+            action = agent.select_action_from_target_actor(state)
             next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
             episode_reward += reward
 
@@ -185,6 +194,5 @@ for i_episode in range(args.num_episodes):
         print("Episode: {}, total numsteps: {}, reward: {}, average reward: {}".format(i_episode, total_numsteps,
                                                                                        rewards[-1],
                                                                                        np.mean(rewards[-10:])))
-
 
 env.close()

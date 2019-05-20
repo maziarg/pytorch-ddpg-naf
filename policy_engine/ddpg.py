@@ -115,15 +115,13 @@ class DDPG(object):
         self.critic = Critic(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.critic_target = Critic(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.critic_optim = Adam(self.critic.parameters(), lr=lr_critic)
-
         self.gamma = gamma
         self.tau = tau
-
         hard_update(self.actor_target, self.actor)  # Make sure target is with the same weight
         hard_update(self.critic_target, self.critic)
 
     #This is where the behavioural policy is called
-    def select_action(self, state, action_noise=None):
+    def select_action(self, state, action_noise=None,previous_action=None):
         if self.poly_rl_exploration_flag is False:
             #
             self.actor.eval()
@@ -138,6 +136,14 @@ class DDPG(object):
         else:
             #activates the poly_rl_exploration policy
             return
+
+    #This function samples from target policy for test
+    def select_action_from_target_actor(self,state):
+        self.actor_target.eval()
+        mu = self.actor_target((Variable(state).to(self.device)))
+        self.actor_target.train()
+        mu = mu.data
+        return mu
 
 
 
