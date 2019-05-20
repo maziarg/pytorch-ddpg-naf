@@ -1,10 +1,13 @@
 import argparse
 from tensorboardX import SummaryWriter
+import datetime
+import logging
+logger = logging.getLogger(__name__)
 import sys
 
 # Important Note: for running on server you should specify the python project directory ...
 # ...the project may contain multiple directories. This should be set manually.
-sys.path.insert(0, '/home/hossain_aboutalebi_gmail_com/pytorch-ddpg-naf')
+# sys.path.insert(0, '/home/hossain_aboutalebi_gmail_com/pytorch-ddpg-naf')
 
 import gym
 import roboschool
@@ -12,6 +15,7 @@ import numpy as np
 import torch
 import os
 
+from policy_engine.mod_reward import *
 from policy_engine.poly_rl import *
 from policy_engine.ddpg import DDPG
 from policy_engine.naf import NAF
@@ -32,10 +36,10 @@ parser.add_argument('--algo', default='DDPG',
 parser.add_argument('-o', '--output_path', default=os.path.expanduser('~') + '/results_exploration_policy',
                     help='output path for files produced by the agent')
 
-parser.add_argument('--sparse_reward', action='store_false',
+parser.add_argument('--sparse_reward', action='store_true',
                     help='for making reward sparse. Default=True')
 
-parser.add_argument('--env-name', default="RoboschoolHalfCheetah-v1",
+parser.add_argument('--env_name', default="RoboschoolHalfCheetah-v1",
                     help='name of the environment to run')
 
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
@@ -44,8 +48,8 @@ parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
 parser.add_argument('--seed', type=int, default=4, metavar='N',
                     help='random seed (default: 4)')
 
-parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
-                    help='max episode length (default: 1000)')
+parser.add_argument('--num_steps', type=int, default=10000, metavar='N',
+                    help='max episode length (default: 10000)')
 
 parser.add_argument('--num_episodes', type=int, default=1000, metavar='N',
                     help='number of episodes (default: 1000)')
@@ -83,7 +87,7 @@ parser.add_argument('--noise_scale', type=float, default=0.3, metavar='G',
 parser.add_argument('--final_noise_scale', type=float, default=0.3, metavar='G',
                     help='final noise scale (default: 0.3)')
 
-parser.add_argument('--poly_rl_exploration_flag', action='store_false',
+parser.add_argument('--poly_rl_exploration_flag', action='store_true',
                     help='for using poly_rl exploration. Default=True')
 
 parser.add_argument('--exploration_end', type=int, default=100, metavar='N',
@@ -104,14 +108,31 @@ parser.add_argument('--epsilon', type=float, default=0.999)
 
 parser.add_argument('--sigma_squared', type=float, default=0.04)
 
-
 # retrieve arguments set by the user
 args = parser.parse_args()
+
+#configuring logging
+file_path_results=args.output_path+"/"+str(datetime.datetime.now()).replace(" ", "_")
+if not os.path.exists(args.output_path):
+    os.mkdir(args.output_path)
+os.mkdir(file_path_results)
+logging.basicConfig(level=logging.INFO,filename=file_path_results+"/log.txt")
+logging.getLogger().addHandler(logging.StreamHandler())
+
+logger.info("=================================================================================")
+Config_exeriment="\n Experiment Configuration:\n *Algorithm: "+str(args.algo)+"\n*Output_path result: "+\
+                 str(args.algo)+"\n*sparse_reward: "+ str(args.sparse_reward)+"\n*Environment Name: "+ str(args.env_name)+\
+                 "\n*Gamma "+ str(args.gamma)+"\n*Max episode steps length: "+ str(args.num_steps)+"\n*Number of episodes: "\
+                 + str(args.num_episodes)+"\n*Tau: "+ str(args.tau)+"\n*Tau: "+ str(args.tau)+"\n*Learning rate of actor net: "\
+                 + str(args.lr_actor)+"\n*Learning rate of actor net: "+ str(args.lr_actor)
+logger.info(Config_exeriment)
+logger.info("=================================================================================")
+
 
 env = gym.make(args.env_name)
 
 # for tensorboard
-writer = SummaryWriter()
+writer = SummaryWriter(log_dir=file_path_results)
 
 # sets the seed for making it comparable with other implementations
 env.seed(args.seed)
@@ -145,6 +166,7 @@ total_numsteps = 0
 updates = 0
 
 for i_episode in range(args.num_episodes):
+    total_numsteps = 0
     state = torch.Tensor([env.reset()])
 
     if args.ou_noise:
@@ -159,7 +181,8 @@ for i_episode in range(args.num_episodes):
     episode_reward = 0
     previous_action = None
     previous_state = state
-    while True:
+    counter=0
+    while (counter<args.num_steps):
         action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
         previous_action = action
         next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
@@ -169,16 +192,7 @@ for i_episode in range(args.num_episodes):
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
         reward = torch.Tensor([reward])
-
-        #for reward sparsity TODO: check if this sparsity makes sense
-        if(args.sparse_reward):
-            if (env.env.body_xyz[0]-env.env.start_pos_x>5):
-                modified_reward=torch.Tensor([1])
-            else:
-                modified_reward = torch.Tensor([0])
-        else:
-            modified_reward=reward
-
+        modified_reward=make_reward_sparse(env=env,flag_sparse=args.sparse_reward,reward=reward)
         memory.push(state, action, mask, next_state, modified_reward)
         previous_state=state
         state = next_state
@@ -198,6 +212,7 @@ for i_episode in range(args.num_episodes):
         # if the environemnt should be reset, we break
         if done:
             break
+        counter+=1
 
     writer.add_scalar('reward/train', episode_reward, i_episode)
 
@@ -208,15 +223,18 @@ for i_episode in range(args.num_episodes):
     if i_episode % 10 == 0:
         state = torch.Tensor([env.reset()])
         episode_reward = 0
-        while True:
+        counter=0
+        while(counter<args.num_steps):
             action = agent.select_action_from_target_actor(state)
             next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
+            print(env.env.body_xyz[0])
             episode_reward += reward
 
             next_state = torch.Tensor([next_state])
             state = next_state
             if done:
                 break
+            counter+=1
 
         writer.add_scalar('reward/test', episode_reward, i_episode)
 
