@@ -23,6 +23,7 @@ class PolyRL():
         self.actor_target_function = actor_target_function
         self.number_of_goal = 0  # TODO: Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
         self.i = 1
+        self.Update_variable=True
         self.g = 0
         self.C_vector = torch.zeros(1, env.observation_space.shape[0])
         self.delta_g = 0
@@ -38,6 +39,7 @@ class PolyRL():
         self.eta = None
 
     def select_action(self, state, previous_action,tensor_board_writer,step_number):
+        self.Update_variable = True
         if (self.t == 0):
             return torch.FloatTensor(1, 6).uniform_(self.min_action_limit, self.max_action_limit)
 
@@ -46,6 +48,7 @@ class PolyRL():
             tensor_board_writer.add_scalar('number_of_time_target_policy__exploration_is_called', step_number, self.number_of_time_target_policy_is_called)
             action = self.actor_target_function(state)
             self.reset_parameters_PolyRL()
+            self.Update_variable=False
             return action
 
         else:
@@ -102,12 +105,11 @@ class PolyRL():
                                                                     self.w_old.reshape(-1)).item() / (
                                     norm_w_new * norm_w_old)) / (self.i - 1)
             K = 0
-
             for j in range(1, self.i):
                 if(self.C_theta==1):
                     K=K+j
                 else:
-                    K = K + j * np.exp((j - self.i) / (1 / abs(np.log(self.C_theta))))
+                    K = K + j * np.exp((j - self.i) / (1 / np.log(self.C_theta)))
             norm_B_vector = np.linalg.norm(self.B_vector.numpy(), ord=2)
             last_term = (1 / (self.i - 1)) * self.old_g
 
@@ -134,7 +136,7 @@ class PolyRL():
         if(self.C_theta==1):
             return 1
         else:
-            Lp=1 / abs(np.log(self.C_theta))
+            Lp=1 / np.log(self.C_theta)
             return np.exp((-abs(self.i - 1)) / Lp)
 
 
