@@ -30,7 +30,7 @@ class PolyRL():
         self.b = 0
         self.B_vector = torch.zeros(1, env.observation_space.shape[
             0])  # TODO: Maziar please check! what is its shape? I am not sure if this is correct!
-        self.C_theta = 0
+        self.C_theta = 0.001
         self.L = -1
         self.U = 1
         self.t = 0  # to account for time step
@@ -65,7 +65,7 @@ class PolyRL():
         self.delta_g = 0
         self.b = 0
         self.B_vector = torch.zeros(1, self.env.observation_space.shape[0])
-        self.C_theta = 0
+        self.C_theta = 0.001
         self.L = -1
         self.U = 1
         self.t = 0  # to account for time step
@@ -102,6 +102,7 @@ class PolyRL():
             self.old_g = self.g
             self.g = ( (self.i-2)/(self.i-1)) * self.g + (1 / self.i) * np.linalg.norm(Delta1.numpy(), ord=2) ** 2
             self.delta_g=self.g-self.old_g
+            old_C_theta=self.C_theta
             self.C_theta = ((self.i - 2) * self.C_theta + torch.dot(self.w_new.reshape(-1),
                                                                     self.w_old.reshape(-1)).item() / (
                                     norm_w_new * norm_w_old)) / (self.i - 1)
@@ -109,7 +110,7 @@ class PolyRL():
             for j in range(1, self.i):
                 if(self.C_theta==1):
                     K=K+j
-                else:
+                elif(self.C_theta>0):
                     K = K + j * np.exp((j - self.i) / (1 / np.log(self.C_theta)))
             norm_B_vector = np.linalg.norm(self.B_vector.numpy(), ord=2)
             last_term = (1 / (self.i - 1)) * self.old_g
@@ -117,6 +118,8 @@ class PolyRL():
             # Upper bound and lower bound are computed here
             self.U = (1 / ((self.i ** 3) * (1 - self.epsilon))) * (
                     (self.i ** 2) * self.b + (norm_B_vector ** 2) + 2 * self.i * self.b * K) - last_term
+
+            print(self.U)
 
             tensor_board_writer.add_scalar('Upper_bound_PolyRL', step_number, self.U)
 
@@ -149,7 +152,7 @@ class PolyRL():
         self.delta_g = 0
         self.b = 0
         self.B_vector = torch.zeros(self.env.observation_space.shape[0])
-        self.C_theta = 0
+        self.C_theta = 0.001
         self.L = -1
         self.U = 1
         self.t = 0
