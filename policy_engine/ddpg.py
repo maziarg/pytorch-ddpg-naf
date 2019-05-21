@@ -6,6 +6,8 @@ from torch.optim import Adam
 from torch.autograd import Variable
 import torch.nn.functional as F
 import os
+import logging
+logger = logging.getLogger(__name__)
 
 def soft_update(target, source, tau):
     for target_param, param in zip(target.parameters(), source.parameters()):

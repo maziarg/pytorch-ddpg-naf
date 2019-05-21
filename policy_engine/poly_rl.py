@@ -85,7 +85,7 @@ class PolyRL():
         self.i += 1
         return torch.from_numpy(action).reshape(1, action.shape[1])
 
-    def update_parameters(self, previous_state, new_state):
+    def update_parameters(self, previous_state, new_state,tensor_board_writer=None):
         self.w_old = self.w_new
         norm_w_old = np.linalg.norm(self.w_old.numpy(), ord=2)
         self.w_new = new_state - previous_state
