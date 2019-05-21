@@ -201,7 +201,7 @@ for i_episode in range(args.num_episodes):
     counter = 0
     while (counter < args.num_steps):
         total_numsteps += 1
-        action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
+        action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action,tensor_board_writer=writer,step_number=total_numsteps)
         previous_action = action
         next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
         total_numsteps_episode += 1
@@ -216,7 +216,7 @@ for i_episode in range(args.num_episodes):
         previous_state = state
         state = next_state
         if (args.poly_rl_exploration_flag):
-            poly_rl_alg.update_parameters(previous_state=previous_state, new_state=state)
+            poly_rl_alg.update_parameters(previous_state=previous_state, new_state=state,tensor_board_writer=writer,step_number=total_numsteps)
 
         if len(memory) > args.batch_size:
             for _ in range(args.updates_per_step):

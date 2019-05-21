@@ -125,7 +125,7 @@ class DDPG(object):
         hard_update(self.critic_target, self.critic)
 
     #This is where the behavioural policy is called
-    def select_action(self, state, action_noise=None,previous_action=None):
+    def select_action(self, state, tensor_board_writer,step_number,action_noise=None,previous_action=None):
         if self.poly_rl_exploration_flag is False:
             #
             self.actor.eval()
@@ -138,7 +138,7 @@ class DDPG(object):
 
             return mu.clamp(-1, 1)
         else:
-            return self.poly_rl_alg.select_action(state,previous_action)
+            return self.poly_rl_alg.select_action(state,previous_action,tensor_board_writer=tensor_board_writer,step_number=step_number)
 
     #This function samples from target policy for test
     def select_action_from_target_actor(self,state):
