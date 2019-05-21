@@ -1,6 +1,7 @@
 import argparse
 from tensorboardX import SummaryWriter
 import datetime
+import time
 import logging
 logger = logging.getLogger(__name__)
 import sys
@@ -120,11 +121,12 @@ logging.basicConfig(level=logging.INFO,filename=file_path_results+"/log.txt")
 logging.getLogger().addHandler(logging.StreamHandler())
 
 logger.info("=================================================================================")
-Config_exeriment="\n Experiment Configuration:\n *Algorithm: "+str(args.algo)+"\n*Output_path result: "+\
+Config_exeriment="\n Experiment Configuration:\n*Algorithm: "+str(args.algo)+"\n*Output_path result: "+\
                  str(args.algo)+"\n*sparse_reward: "+ str(args.sparse_reward)+"\n*Environment Name: "+ str(args.env_name)+\
                  "\n*Gamma "+ str(args.gamma)+"\n*Max episode steps length: "+ str(args.num_steps)+"\n*Number of episodes: "\
-                 + str(args.num_episodes)+"\n*Tau: "+ str(args.tau)+"\n*Tau: "+ str(args.tau)+"\n*Learning rate of actor net: "\
-                 + str(args.lr_actor)+"\n*Learning rate of actor net: "+ str(args.lr_actor)
+                 + str(args.num_episodes)+"\n*Tau: "+ str(args.tau)+"\n*Learning rate of critic net: "+ str(args.lr_critic)+"\n*Learning rate of actor net: "\
+                 + str(args.lr_actor)+"\n*PolyRL flag: "+ str(args.poly_rl_exploration_flag)+"\n*Betta of PolyRL: "+ str(args.betta)\
+                 +"\n*Epsilon of PolyRL: "+ str(args.epsilon)+"\n*sigma_squared of PolyRL: "+ str(args.sigma_squared)
 logger.info(Config_exeriment)
 logger.info("=================================================================================")
 
@@ -164,7 +166,7 @@ ounoise = OUNoise(env.action_space.shape[0]) if args.ou_noise else None
 rewards = []
 total_numsteps = 0
 updates = 0
-
+start_time=time.time()
 for i_episode in range(args.num_episodes):
     total_numsteps = 0
     state = torch.Tensor([env.reset()])
@@ -205,9 +207,6 @@ for i_episode in range(args.num_episodes):
                 batch = Transition(*zip(*transitions))
 
                 value_loss, policy_loss = agent.update_parameters(batch)
-
-                writer.add_scalar('loss/value', value_loss, updates)
-                writer.add_scalar('loss/policy', policy_loss, updates)
                 updates += 1
         # if the environemnt should be reset, we break
         if done:
@@ -227,7 +226,6 @@ for i_episode in range(args.num_episodes):
         while(counter<args.num_steps):
             action = agent.select_action_from_target_actor(state)
             next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
-            print(env.env.body_xyz[0])
             episode_reward += reward
 
             next_state = torch.Tensor([next_state])
@@ -237,10 +235,10 @@ for i_episode in range(args.num_episodes):
             counter+=1
 
         writer.add_scalar('reward/test', episode_reward, i_episode)
-
+        time_len=time.time()-start_time
+        start_time=time.time()
         rewards.append(episode_reward)
-        print("Episode: {}, total numsteps: {}, reward: {}, average reward: {}".format(i_episode, total_numsteps,
-                                                                                       rewards[-1],
-                                                                                       np.mean(rewards[-10:])))
+        logger.info("Episode: {}, time:{}, total numsteps: {}, reward: {}".format(i_episode, time_len,total_numsteps,
+                                                                                  episode_reward))
 
 env.close()
