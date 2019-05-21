@@ -43,17 +43,18 @@ class PolyRL():
         if (self.t == 0):
             return torch.FloatTensor(1, 6).uniform_(self.min_action_limit, self.max_action_limit)
 
-        elif ((self.delta_g > self.U) or (self.delta_g < self.L) or (self.C_theta<=0)):
-            self.number_of_time_target_policy_is_called+=1
-            tensor_board_writer.add_scalar('number_of_time_target_policy__exploration_is_called', step_number, self.number_of_time_target_policy_is_called)
-            action = self.actor_target_function(state)
-            self.reset_parameters_PolyRL()
-            self.Update_variable=False
-            return action
-
-        else:
+        elif (((self.delta_g < self.U) and (self.delta_g > self.L) and (self.C_theta>0)) or self.i==1):
             self.eta = abs(np.random.normal(self.lambda_, np.sqrt(self.sigma_squared)))
             return self.sample_action_algorithm(previous_action)
+
+        else:
+            self.number_of_time_target_policy_is_called += 1
+            tensor_board_writer.add_scalar('number_of_time_target_policy__exploration_is_called', step_number,
+                                           self.number_of_time_target_policy_is_called)
+            action = self.actor_target_function(state)
+            self.reset_parameters_PolyRL()
+            self.Update_variable = False
+            return action
 
     # This function resets parameters of PolyRl every episode. Should be called in the beggining of every episode
     def reset_parameters_in_beginning_of_episode(self,episode_number):
