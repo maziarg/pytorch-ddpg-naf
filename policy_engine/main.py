@@ -3,6 +3,7 @@ from tensorboardX import SummaryWriter
 import datetime
 import time
 import logging
+import pickle
 
 logger = logging.getLogger(__name__)
 import sys
@@ -53,10 +54,10 @@ parser.add_argument('--threshold_sparcity', type=float, default=0.15, metavar='G
 parser.add_argument('--seed', type=int, default=4, metavar='N',
                     help='random seed (default: 4)')
 
-parser.add_argument('--num_steps', type=int, default=10000, metavar='N',
+parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
                     help='max episode length (default: 10000)')
 
-parser.add_argument('--num_episodes', type=int, default=1000, metavar='N',
+parser.add_argument('--num_episodes', type=int, default=2500, metavar='N',
                     help='number of episodes (default: 1000)')
 
 parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
@@ -128,7 +129,8 @@ logging.getLogger().addHandler(logging.StreamHandler())
 
 logger.info("=================================================================================")
 Config_exeriment = "\n Experiment Configuration:\n*Algorithm: " + str(args.algo) + "\n*Output_path result: " + \
-                   str(args.output_path) + "\n*sparse_reward: " + str(args.sparse_reward) + "\n*Environment Name: " + str(
+                   str(args.output_path) + "\n*sparse_reward: " + str(
+    args.sparse_reward) + "\n*Environment Name: " + str(
     args.env_name) + \
                    "\n*Gamma " + str(args.gamma) + "\n*Max episode steps length: " + str(
     args.num_steps) + "\n*Number of episodes: " \
@@ -176,8 +178,9 @@ ounoise = OUNoise(env.action_space.shape[0]) if args.ou_noise else None
 
 rewards = []
 total_numsteps_episode = 0
-total_numsteps=0
+total_numsteps = 0
 updates = 0
+Final_results={"reward":[]}
 start_time = time.time()
 for i_episode in range(args.num_episodes):
     total_numsteps_episode = 0
@@ -197,7 +200,7 @@ for i_episode in range(args.num_episodes):
     previous_state = state
     counter = 0
     while (counter < args.num_steps):
-        total_numsteps+=1
+        total_numsteps += 1
         action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
         previous_action = action
         next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
@@ -222,7 +225,7 @@ for i_episode in range(args.num_episodes):
                 value_loss, policy_loss = agent.update_parameters(batch, tensor_board_writer=writer,
                                                                   episode_number=i_episode)
                 updates += 1
-        last_x_body=env.env.body_xyz[0]
+        last_x_body = env.env.body_xyz[0]
         writer.add_scalar('x_body', last_x_body, i_episode)
         # if the environemnt should be reset, we break
         if done:
@@ -253,7 +256,11 @@ for i_episode in range(args.num_episodes):
         time_len = time.time() - start_time
         start_time = time.time()
         rewards.append(episode_reward)
-        logger.info("Episode: {}, time:{}, numsteps in the episode: {}, total episode so far: {}, x_body: {},reward: {}".format(i_episode, time_len, total_numsteps_episode,total_numsteps,
-                                                                                                                                last_x_body,episode_reward))
+        Final_results["reward"].append(episode_reward)
+        logger.info(
+            "Episode: {}, time:{}, numsteps in the episode: {}, total steps so far: {}, x_body: {}, reward: {}".format(
+                i_episode, time_len, total_numsteps_episode, total_numsteps, last_x_body, episode_reward))
 
+    with open(file_path_results+'/result_reward.pkl', 'wb') as handle:
+        pickle.dump(Final_results, handle)
 env.close()
