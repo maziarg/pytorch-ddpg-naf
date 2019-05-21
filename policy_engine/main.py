@@ -216,7 +216,7 @@ for i_episode in range(args.num_episodes):
         previous_state = state
         state = next_state
         if (args.poly_rl_exploration_flag and poly_rl_alg.Update_variable ):
-            poly_rl_alg.update_parameters(previous_state=previous_state, new_state=state,tensor_board_writer=writer,step_number=total_numsteps)
+            poly_rl_alg.update_parameters(previous_state=previous_state, new_state=state,tensor_board_writer=writer)
 
         if len(memory) > args.batch_size:
             for _ in range(args.updates_per_step):

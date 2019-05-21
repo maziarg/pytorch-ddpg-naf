@@ -14,6 +14,7 @@ class PolyRL():
                  actor_target_function=None):
         self.epsilon = epsilon
         self.env = env
+        self.number_of_time_PolyRL__update_parameter_is_called=0
         self.number_of_time_target_policy_is_called=0
         self.gamma = gamma
         self.lambda_ = lambda_
@@ -51,8 +52,7 @@ class PolyRL():
 
         else:
             self.number_of_time_target_policy_is_called += 1
-            tensor_board_writer.add_scalar('number_of_time_target_policy__exploration_is_called', step_number,
-                                           self.number_of_time_target_policy_is_called)
+            tensor_board_writer.add_scalar('number_of_time_target_policy__exploration_is_called', self.number_of_time_target_policy_is_called,step_number)
             action = self.actor_target_function(state)
             self.reset_parameters_PolyRL()
             self.Update_variable = False
@@ -93,7 +93,7 @@ class PolyRL():
         self.i += 1
         return torch.from_numpy(action).reshape(1, action.shape[1])
 
-    def update_parameters(self, previous_state, new_state,step_number,tensor_board_writer=None):
+    def update_parameters(self, previous_state, new_state,tensor_board_writer=None):
         self.w_old = self.w_new
         norm_w_old = np.linalg.norm(self.w_old.numpy(), ord=2)
         self.w_new = new_state - previous_state
@@ -121,22 +121,19 @@ class PolyRL():
             self.U = (1 / ((self.i ** 3) * (1 - self.epsilon))) * (
                     (self.i ** 2) * self.b + (norm_B_vector ** 2) + 2 * self.i * self.b * K) - last_term
 
-            logger.info("@Upper bound value: {}".format(self.U))
-
-            tensor_board_writer.add_scalar('Upper_bound_PolyRL', step_number, self.U)
+            tensor_board_writer.add_scalar('Upper_bound_PolyRL', self.U, self.number_of_time_PolyRL__update_parameter_is_called)
 
             self.L = (1 - np.sqrt(2 * self.epsilon)) * (
                     self.b / self.i + (((self.i - 1) * (self.i - 2)) / self.i ** 2) * self.b * self.compute_correlation_decay() + (1 / self.i ** 3) * norm_B_vector ** 2) - last_term
 
             self.L = max(0, self.L)
 
-            logger.info("@Lower bound value: {}".format(self.L))
+            logger.info("@Upper bound value: {}, @Lower bound value: {}".format(self.U,self.L))
 
 
-            tensor_board_writer.add_scalar('Lower_bound_PolyRL', step_number, self.L)
+            tensor_board_writer.add_scalar('Lower_bound_PolyRL', self.L, self.number_of_time_PolyRL__update_parameter_is_called)
 
-
-
+        self.number_of_time_PolyRL__update_parameter_is_called+=1
         self.b = ((self.i - 1) * self.b + norm_w_new ** 2) / self.i
         self.C_vector = ((self.i - 1) * self.C_vector + previous_state) / self.i
         self.t += 1
