@@ -2,6 +2,8 @@ import os
 import shutil
 import numpy as np
 import torch
+import logging
+logger = logging.getLogger(__name__)
 
 
 # implements the PolyRL algorithm
@@ -119,7 +121,7 @@ class PolyRL():
             self.U = (1 / ((self.i ** 3) * (1 - self.epsilon))) * (
                     (self.i ** 2) * self.b + (norm_B_vector ** 2) + 2 * self.i * self.b * K) - last_term
 
-            print(self.U)
+            logger.info("@Upper bound value: {}".format(self.U))
 
             tensor_board_writer.add_scalar('Upper_bound_PolyRL', step_number, self.U)
 
@@ -127,6 +129,9 @@ class PolyRL():
                     self.b / self.i + (((self.i - 1) * (self.i - 2)) / self.i ** 2) * self.b * self.compute_correlation_decay() + (1 / self.i ** 3) * norm_B_vector ** 2) - last_term
 
             self.L = max(0, self.L)
+
+            logger.info("@Lower bound value: {}".format(self.L))
+
 
             tensor_board_writer.add_scalar('Lower_bound_PolyRL', step_number, self.L)
 
