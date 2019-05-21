@@ -50,9 +50,8 @@ class PolyRL():
             return self.sample_action_algorithm(previous_action)
 
     # This function resets parameters of PolyRl every episode. Should be called in the beggining of every episode
-    def reset_parameters_in_beginning_of_episode(self):
-        if(self.number_of_goal!=0):
-            self.epsilon = 1 / (1 + self.betta) ** (self.number_of_goal ** 2)
+    def reset_parameters_in_beginning_of_episode(self,episode_number):
+        self.epsilon = 1 / (1 + self.betta) ** (np.log(episode_number) ** 2)
         self.i = 1
         self.g = 0
         self.C_vector = torch.zeros(1, self.env.observation_space.shape[0])

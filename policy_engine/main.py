@@ -38,7 +38,7 @@ parser.add_argument('--algo', default='DDPG',
 parser.add_argument('-o', '--output_path', default=os.path.expanduser('~') + '/results_exploration_policy',
                     help='output path for files produced by the agent')
 
-parser.add_argument('--sparse_reward', action='store_true',
+parser.add_argument('--sparse_reward', action='store_false',
                     help='for making reward sparse. Default=True')
 
 parser.add_argument('--env_name', default="RoboschoolHalfCheetah-v1",
@@ -46,6 +46,9 @@ parser.add_argument('--env_name', default="RoboschoolHalfCheetah-v1",
 
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
+
+parser.add_argument('--threshold_sparcity', type=float, default=0.15, metavar='G',
+                    help='threshold_sparcity for rewards (default: 0.15)')
 
 parser.add_argument('--seed', type=int, default=4, metavar='N',
                     help='random seed (default: 4)')
@@ -89,7 +92,7 @@ parser.add_argument('--noise_scale', type=float, default=0.3, metavar='G',
 parser.add_argument('--final_noise_scale', type=float, default=0.3, metavar='G',
                     help='final noise scale (default: 0.3)')
 
-parser.add_argument('--poly_rl_exploration_flag', action='store_true',
+parser.add_argument('--poly_rl_exploration_flag', action='store_false',
                     help='for using poly_rl exploration. Default=True')
 
 parser.add_argument('--exploration_end', type=int, default=100, metavar='N',
@@ -125,7 +128,7 @@ logging.getLogger().addHandler(logging.StreamHandler())
 
 logger.info("=================================================================================")
 Config_exeriment = "\n Experiment Configuration:\n*Algorithm: " + str(args.algo) + "\n*Output_path result: " + \
-                   str(args.algo) + "\n*sparse_reward: " + str(args.sparse_reward) + "\n*Environment Name: " + str(
+                   str(args.output_path) + "\n*sparse_reward: " + str(args.sparse_reward) + "\n*Environment Name: " + str(
     args.env_name) + \
                    "\n*Gamma " + str(args.gamma) + "\n*Max episode steps length: " + str(
     args.num_steps) + "\n*Number of episodes: " \
@@ -134,7 +137,8 @@ Config_exeriment = "\n Experiment Configuration:\n*Algorithm: " + str(args.algo)
                    + str(args.lr_actor) + "\n*PolyRL flag: " + str(
     args.poly_rl_exploration_flag) + "\n*Betta of PolyRL: " + str(args.betta) \
                    + "\n*Epsilon of PolyRL: " + str(args.epsilon) + "\n*sigma_squared of PolyRL: " + str(
-    args.sigma_squared)+ "\n*Lambda of PolyRL: " + str(args.lambda_)
+    args.sigma_squared) + "\n*Lambda of PolyRL: " + str(
+    args.lambda_) + "\n*Threshold of sparcity start in rewards: " + str(args.threshold_sparcity)
 logger.info(Config_exeriment)
 logger.info("=================================================================================")
 
@@ -161,7 +165,7 @@ else:
 poly_rl_alg = None
 if (args.poly_rl_exploration_flag):
     poly_rl_alg = PolyRL(gamma=args.gamma, betta=args.betta, epsilon=args.epsilon, sigma_squared=args.sigma_squared,
-                         actor_target_function=agent.select_action_from_target_actor, env=env,lambda_=args.lambda_)
+                         actor_target_function=agent.select_action_from_target_actor, env=env, lambda_=args.lambda_)
     agent.set_poly_rl_alg(poly_rl_alg)
 
 # Important Note: This replay memory shares memory with different episodes
@@ -171,11 +175,12 @@ memory = ReplayMemory(args.replay_size)
 ounoise = OUNoise(env.action_space.shape[0]) if args.ou_noise else None
 
 rewards = []
-total_numsteps = 0
+total_numsteps_episode = 0
+total_numsteps=0
 updates = 0
 start_time = time.time()
 for i_episode in range(args.num_episodes):
-    total_numsteps = 0
+    total_numsteps_episode = 0
     state = torch.Tensor([env.reset()])
 
     if args.ou_noise:
@@ -185,23 +190,25 @@ for i_episode in range(args.num_episodes):
         ounoise.reset()
 
     if (args.poly_rl_exploration_flag):
-        poly_rl_alg.reset_parameters_in_beginning_of_episode()
+        poly_rl_alg.reset_parameters_in_beginning_of_episode(i_episode + 2)
 
     episode_reward = 0
     previous_action = None
     previous_state = state
     counter = 0
     while (counter < args.num_steps):
+        total_numsteps+=1
         action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action)
         previous_action = action
         next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
-        total_numsteps += 1
+        total_numsteps_episode += 1
         episode_reward += reward
         action = torch.Tensor(action.cpu())
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
         reward = torch.Tensor([reward])
-        modified_reward = make_reward_sparse(env=env, flag_sparse=args.sparse_reward, reward=reward)
+        modified_reward = make_reward_sparse(env=env, flag_sparse=args.sparse_reward, reward=reward,
+                                             threshold_sparcity=args.threshold_sparcity)
         memory.push(state, action, mask, next_state, modified_reward)
         previous_state = state
         state = next_state
@@ -212,16 +219,17 @@ for i_episode in range(args.num_episodes):
             for _ in range(args.updates_per_step):
                 transitions = memory.sample(args.batch_size)
                 batch = Transition(*zip(*transitions))
-
-                value_loss, policy_loss = agent.update_parameters(batch,tensor_board_writer=writer,episode_number=i_episode)
+                value_loss, policy_loss = agent.update_parameters(batch, tensor_board_writer=writer,
+                                                                  episode_number=i_episode)
                 updates += 1
+        last_x_body=env.env.body_xyz[0]
+        writer.add_scalar('x_body', last_x_body, i_episode)
         # if the environemnt should be reset, we break
         if done:
             break
         counter += 1
 
     writer.add_scalar('reward/train', episode_reward, i_episode)
-
     rewards.append(episode_reward)
 
     # This section is for computing the target policy perfomance
@@ -245,7 +253,7 @@ for i_episode in range(args.num_episodes):
         time_len = time.time() - start_time
         start_time = time.time()
         rewards.append(episode_reward)
-        logger.info("Episode: {}, time:{}, total numsteps: {}, reward: {}".format(i_episode, time_len, total_numsteps,
-                                                                                  episode_reward))
+        logger.info("Episode: {}, time:{}, numsteps in the episode: {}, total episode so far: {}, x_body: {},reward: {}".format(i_episode, time_len, total_numsteps_episode,total_numsteps,
+                                                                                                                                last_x_body,episode_reward))
 
 env.close()

@@ -1,5 +1,6 @@
 import sys
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam
@@ -149,7 +150,7 @@ class DDPG(object):
 
 
 
-    def update_parameters(self, batch):
+    def update_parameters(self, batch,tensor_board_writer,episode_number):
 
         state_batch = Variable(torch.cat(batch.state)).to(self.device)
         action_batch = Variable(torch.cat(batch.action)).to(self.device)
@@ -180,9 +181,17 @@ class DDPG(object):
 
         #updating target policy networks with soft update
         soft_update(self.actor_target, self.actor, self.tau)
+        norm_grad_actor_net=self.calculate_norm_grad(self.actor)
+        tensor_board_writer.add_scalar('norm_grad_actor', norm_grad_actor_net, episode_number)
         soft_update(self.critic_target, self.critic, self.tau)
-
+        tensor_board_writer.add_scalar('norm_grad_critic',self.calculate_norm_grad(self.critic), episode_number)
         return value_loss.item(), policy_loss.item()
+
+    def calculate_norm_grad(self,net):
+        S=0
+        for p in list(filter(lambda p: p.grad is not None, net.parameters())):
+            S+=p.grad.data.norm(2).item()**2
+        return np.sqrt(S)
 
     def set_poly_rl_alg(self,poly_rl_alg):
         self.poly_rl_alg=poly_rl_alg
