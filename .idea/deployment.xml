@@ -16,6 +16,13 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="DL2@192.168.20.124:22">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/hossein_experiments" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
     </serverData>
     <option name="myAutoUpload" value="ALWAYS" />
   </component>
