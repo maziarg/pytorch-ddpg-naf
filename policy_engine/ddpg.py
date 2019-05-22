@@ -173,6 +173,7 @@ class DDPG(object):
         value_loss = F.mse_loss(state_action_batch, expected_state_action_batch)
         value_loss.backward()
         clip_grad_norm_(self.critic.parameters(), 0.5)
+        tensor_board_writer.add_scalar('norm_grad_critic',self.calculate_norm_grad(self.critic), episode_number)
         self.critic_optim.step()
 
         #updating actor network
@@ -188,7 +189,6 @@ class DDPG(object):
         norm_grad_actor_net=self.calculate_norm_grad(self.actor)
         tensor_board_writer.add_scalar('norm_grad_actor', norm_grad_actor_net, episode_number)
         soft_update(self.critic_target, self.critic, self.tau)
-        tensor_board_writer.add_scalar('norm_grad_critic',self.calculate_norm_grad(self.critic), episode_number)
         return value_loss.item(), policy_loss.item()
 
     def calculate_norm_grad(self,net):
