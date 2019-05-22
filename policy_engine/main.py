@@ -48,7 +48,7 @@ parser.add_argument('--env_name', default="RoboschoolHalfCheetah-v1",
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 
-parser.add_argument('--threshold_sparcity', type=float, default=0.15, metavar='G',
+parser.add_argument('--threshold_sparcity', type=float, default=1, metavar='G',
                     help='threshold_sparcity for rewards (default: 0.15)')
 
 parser.add_argument('--seed', type=int, default=4, metavar='N',
@@ -79,10 +79,10 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
 parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='discount factor for model (default: 0.001)')
 
-parser.add_argument('--lr_actor', type=float, default=1e-4,
+parser.add_argument('--lr_actor', type=float, default=1e-5,
                     help='learning rate for actor policy')
 
-parser.add_argument('--lr_critic', type=float, default=1e-3,
+parser.add_argument('--lr_critic', type=float, default=1e-4,
                     help='learning rate for critic policy')
 
 # Note: The following noise are for the behavioural policy of the pure DDPG without the poly_rl policy
@@ -115,9 +115,9 @@ parser.add_argument('--betta', type=float, default=0.001)
 
 parser.add_argument('--epsilon', type=float, default=0.999)
 
-parser.add_argument('--sigma_squared', type=float, default=0.04)
+parser.add_argument('--sigma_squared', type=float, default=0.0012)
 
-parser.add_argument('--lambda_', type=float, default=0.08)
+parser.add_argument('--lambda_', type=float, default=0.12)
 
 # retrieve arguments set by the user
 args = parser.parse_args()
@@ -253,7 +253,7 @@ for i_episode in range(args.num_episodes):
                                                                        threshold_sparcity=args.threshold_sparcity,
                                                                        negative_reward_flag=args.reward_negative, num_steps=args.num_steps)
 
-            episode_modified_reward+=modified_reward
+            episode_modified_reward+=modified_reward.item()
             next_state = torch.Tensor([next_state])
             state = next_state
             if done or flag_absorbing_state:
