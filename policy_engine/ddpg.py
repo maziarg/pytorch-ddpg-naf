@@ -6,6 +6,7 @@ import torch.nn as nn
 from torch.optim import Adam
 from torch.optim import SGD
 from torch.autograd import Variable
+from torch.nn.utils import clip_grad_norm_
 import torch.nn.functional as F
 import os
 import logging
@@ -171,6 +172,7 @@ class DDPG(object):
         state_action_batch = self.critic((state_batch), (action_batch))
         value_loss = F.mse_loss(state_action_batch, expected_state_action_batch)
         value_loss.backward()
+        clip_grad_norm_(self.critic.parameters(), 0.5)
         self.critic_optim.step()
 
         #updating actor network
@@ -178,6 +180,7 @@ class DDPG(object):
         policy_loss = -self.critic((state_batch),self.actor((state_batch)))
         policy_loss = policy_loss.mean()
         policy_loss.backward()
+        clip_grad_norm_(self.actor.parameters(), 0.5)
         self.actor_optim.step()
 
         #updating target policy networks with soft update
