@@ -20,8 +20,8 @@ class PolyRL():
         self.lambda_ = lambda_
         self.sigma_squared = sigma_squared
         self.nb_actions = env.action_space.shape[0]
-        self.max_action_limit = max(env.action_space.high)
-        self.min_action_limit = min(env.action_space.low)
+        self.max_action_limit = float(max(env.action_space.high))
+        self.min_action_limit = float(min(env.action_space.low))
         self.betta = betta
         self.actor_target_function = actor_target_function
         self.number_of_goal = 0  # TODO: Maziar please check! have changed number of goals from 0 to 1 due to division by zero error.
@@ -77,7 +77,7 @@ class PolyRL():
 
     def sample_action_algorithm(self, previous_action):
         previous_action=previous_action.cpu()
-        P = torch.FloatTensor(previous_action.shape[1]).uniform_(self.min_action_limit, self.max_action_limit)
+        P = torch.FloatTensor(previous_action.shape[1]).uniform_(float(self.min_action_limit), float(self.max_action_limit))
         D = torch.dot(P, previous_action.reshape(-1)).item()
         norm_previous_action = np.linalg.norm(previous_action.numpy(), ord=2)
         V_p = (D / norm_previous_action ** 2) * previous_action

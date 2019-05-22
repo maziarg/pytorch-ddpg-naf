@@ -8,6 +8,8 @@ import pickle
 logger = logging.getLogger(__name__)
 import sys
 
+sys.path.insert(0,"/home/hossain_aboutalebi_gmail_com/pytorch-ddpg-naf")
+
 # Important Note: for running on server you should specify the python project directory ...
 # ...the project may contain multiple directories. This should be set manually.
 # sys.path.insert(0, '/home/hossain_aboutalebi_gmail_com/pytorch-ddpg-naf')
@@ -151,7 +153,10 @@ logger.info("===================================================================
 env = gym.make(args.env_name)
 
 # for tensorboard
-writer = SummaryWriter(log_dir=file_path_results)
+try:
+    writer = SummaryWriter(logdir=file_path_results)
+except:
+    writer = SummaryWriter(file_path_results)
 
 # sets the seed for making it comparable with other implementations
 env.seed(args.seed)
