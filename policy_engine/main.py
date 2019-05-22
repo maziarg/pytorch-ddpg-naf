@@ -60,10 +60,10 @@ parser.add_argument('--reward_negative', action='store_false',
                     help='Determines if we can have neagative reward (Default True)')
 
 parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
-                    help='max episode length (default: 10000)')
+                    help='max episode length (default: 1000)')
 
-parser.add_argument('--num_episodes', type=int, default=2500, metavar='N',
-                    help='number of episodes (default: 1000)')
+parser.add_argument('--num_episodes', type=int, default=1500, metavar='N',
+                    help='number of episodes (default: 1500)')
 
 parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
                     help='model updates per simulator step (default: 5)')
@@ -81,10 +81,10 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
 parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='discount factor for model (default: 0.001)')
 
-parser.add_argument('--lr_actor', type=float, default=1e-5,
+parser.add_argument('--lr_actor', type=float, default=1e-3,
                     help='learning rate for actor policy')
 
-parser.add_argument('--lr_critic', type=float, default=1e-4,
+parser.add_argument('--lr_critic', type=float, default=1e-3,
                     help='learning rate for critic policy')
 
 # Note: The following noise are for the behavioural policy of the pure DDPG without the poly_rl policy
