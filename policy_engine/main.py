@@ -54,6 +54,9 @@ parser.add_argument('--threshold_sparcity', type=float, default=0.15, metavar='G
 parser.add_argument('--seed', type=int, default=4, metavar='N',
                     help='random seed (default: 4)')
 
+parser.add_argument('--reward_negative', action='store_false',
+                    help='Determines if we can have neagative reward (Default True)')
+
 parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
                     help='max episode length (default: 10000)')
 
@@ -140,7 +143,8 @@ Config_exeriment = "\n Experiment Configuration:\n*Algorithm: " + str(args.algo)
     args.poly_rl_exploration_flag) + "\n*Betta of PolyRL: " + str(args.betta) \
                    + "\n*Epsilon of PolyRL: " + str(args.epsilon) + "\n*sigma_squared of PolyRL: " + str(
     args.sigma_squared) + "\n*Lambda of PolyRL: " + str(
-    args.lambda_) + "\n*Threshold of sparcity start in rewards: " + str(args.threshold_sparcity)
+    args.lambda_) + "\n*Threshold of sparcity start in rewards: " + str(args.threshold_sparcity) + \
+                   "\n*Reward negative has been activated: " + str(args.reward_negative)
 logger.info(Config_exeriment)
 logger.info("=================================================================================")
 
@@ -180,7 +184,7 @@ rewards = []
 total_numsteps_episode = 0
 total_numsteps = 0
 updates = 0
-Final_results={"reward":[]}
+Final_results = {"reward": [],"modified_reward":[]}
 start_time = time.time()
 for i_episode in range(args.num_episodes):
     total_numsteps_episode = 0
@@ -201,7 +205,8 @@ for i_episode in range(args.num_episodes):
     counter = 0
     while (counter < args.num_steps):
         total_numsteps += 1
-        action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action,tensor_board_writer=writer,step_number=total_numsteps)
+        action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action, tensor_board_writer=writer,
+                                     step_number=total_numsteps)
         previous_action = action
         next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
         total_numsteps_episode += 1
@@ -210,13 +215,13 @@ for i_episode in range(args.num_episodes):
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
         reward = torch.Tensor([reward])
-        modified_reward = make_reward_sparse(env=env, flag_sparse=args.sparse_reward, reward=reward,
-                                             threshold_sparcity=args.threshold_sparcity)
+        modified_reward,flag_absorbing_state = make_reward_sparse(env=env, flag_sparse=args.sparse_reward, reward=reward,
+                                             threshold_sparcity=args.threshold_sparcity, negative_reward_flag=args.reward_negative,num_steps=args.num_steps)
         memory.push(state, action, mask, next_state, modified_reward)
         previous_state = state
         state = next_state
-        if (args.poly_rl_exploration_flag and poly_rl_alg.Update_variable ):
-            poly_rl_alg.update_parameters(previous_state=previous_state, new_state=state,tensor_board_writer=writer)
+        if (args.poly_rl_exploration_flag and poly_rl_alg.Update_variable):
+            poly_rl_alg.update_parameters(previous_state=previous_state, new_state=state, tensor_board_writer=writer)
 
         if len(memory) > args.batch_size:
             for _ in range(args.updates_per_step):
@@ -225,10 +230,8 @@ for i_episode in range(args.num_episodes):
                 value_loss, policy_loss = agent.update_parameters(batch, tensor_board_writer=writer,
                                                                   episode_number=i_episode)
                 updates += 1
-        last_x_body = env.env.body_xyz[0]
-        writer.add_scalar('x_body', last_x_body, i_episode)
         # if the environemnt should be reset, we break
-        if done:
+        if done or flag_absorbing_state:
             break
         counter += 1
 
@@ -240,27 +243,36 @@ for i_episode in range(args.num_episodes):
     if i_episode % 10 == 0:
         state = torch.Tensor([env.reset()])
         episode_reward = 0
+        episode_modified_reward = 0
         counter = 0
         while (counter < args.num_steps):
             action = agent.select_action_from_target_actor(state)
             next_state, reward, done, _ = env.step(action.cpu().numpy()[0])
             episode_reward += reward
+            modified_reward, flag_absorbing_state = make_reward_sparse(env=env, flag_sparse=args.sparse_reward, reward=reward,
+                                                                       threshold_sparcity=args.threshold_sparcity,
+                                                                       negative_reward_flag=args.reward_negative, num_steps=args.num_steps)
 
+            episode_modified_reward+=modified_reward
             next_state = torch.Tensor([next_state])
             state = next_state
-            if done:
+            if done or flag_absorbing_state:
                 break
             counter += 1
 
-        writer.add_scalar('reward/test', episode_reward, i_episode)
+        writer.add_scalar('real_reward/test', episode_reward, i_episode)
+        writer.add_scalar('reward_modified/test', episode_modified_reward, i_episode)
         time_len = time.time() - start_time
         start_time = time.time()
         rewards.append(episode_reward)
         Final_results["reward"].append(episode_reward)
+        Final_results["modified_reward"].append(episode_modified_reward)
+        last_x_body = env.env.body_xyz[0]
+        writer.add_scalar('x_body', last_x_body, i_episode)
         logger.info(
-            "Episode: {}, time:{}, numsteps in the episode: {}, total steps so far: {}, x_body: {}, reward: {}".format(
-                i_episode, time_len, total_numsteps_episode, total_numsteps, last_x_body, episode_reward))
+            "Episode: {}, time:{}, numsteps in the episode: {}, total steps so far: {}, x_body: {}, reward: {}, modified_reward {}".format(
+                i_episode, time_len, total_numsteps_episode, total_numsteps, last_x_body, episode_reward, episode_modified_reward))
 
-    with open(file_path_results+'/result_reward.pkl', 'wb') as handle:
+    with open(file_path_results + '/result_reward.pkl', 'wb') as handle:
         pickle.dump(Final_results, handle)
 env.close()

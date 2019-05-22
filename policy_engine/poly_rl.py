@@ -128,10 +128,12 @@ class PolyRL():
 
             self.L = max(0, self.L)
 
-            logger.info("@Upper bound value: {}, @Lower bound value: {}".format(self.U,self.L))
+            # logger.info("@Upper bound value: {}, @Lower bound value: {}".format(self.U,self.L))
 
 
             tensor_board_writer.add_scalar('Lower_bound_PolyRL', self.L, self.number_of_time_PolyRL__update_parameter_is_called)
+            tensor_board_writer.add_scalar('Delta_bounds_PolyRL', self.U-self.L, self.number_of_time_PolyRL__update_parameter_is_called)
+
 
         self.number_of_time_PolyRL__update_parameter_is_called+=1
         self.b = ((self.i - 1) * self.b + norm_w_new ** 2) / self.i
