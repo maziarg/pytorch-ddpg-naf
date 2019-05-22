@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.optim import Adam
+from torch.optim import SGD
 from torch.autograd import Variable
 import torch.nn.functional as F
 import os
@@ -115,10 +116,10 @@ class DDPG(object):
         self.poly_rl_exploration_flag=poly_rl_exploration_flag
         self.actor = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.actor_target = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
-        self.actor_optim = Adam(self.actor.parameters(), lr=lr_actor)
+        self.actor_optim = SGD(self.actor.parameters(), lr=lr_actor, momentum=0.9)
         self.critic = Critic(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.critic_target = Critic(hidden_size, self.num_inputs, self.action_space).to(self.device)
-        self.critic_optim = Adam(self.critic.parameters(), lr=lr_critic)
+        self.critic_optim = SGD(self.critic.parameters(), lr=lr_critic, momentum=0.9)
         self.gamma = gamma
         self.tau = tau
         hard_update(self.actor_target, self.actor)  # Make sure target is with the same weight
