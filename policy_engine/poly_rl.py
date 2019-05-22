@@ -44,7 +44,7 @@ class PolyRL():
     def select_action(self, state, previous_action,tensor_board_writer,step_number):
         self.Update_variable = True
         if (self.t == 0):
-            return torch.FloatTensor(1, 6).uniform_(self.min_action_limit, self.max_action_limit)
+            return torch.FloatTensor(1, self.env.action_space.shape[0]).uniform_(self.min_action_limit, self.max_action_limit)
 
         elif (((self.delta_g < self.U) and (self.delta_g > self.L) and (self.C_theta>0)) or self.i==1):
             self.eta = abs(np.random.normal(self.lambda_, np.sqrt(self.sigma_squared)))
