@@ -60,7 +60,7 @@ class PolyRL():
 
     # This function resets parameters of PolyRl every episode. Should be called in the beggining of every episode
     def reset_parameters_in_beginning_of_episode(self,episode_number):
-        self.epsilon = 1 / (1 + self.betta) ** (np.log(episode_number) ** 2)
+        self.epsilon = 1 / ( 1 + self.betta) ** (np.log(episode_number) ** 8 )
         self.i = 1
         self.g = 0
         self.C_vector = torch.zeros(1, self.env.observation_space.shape[0])

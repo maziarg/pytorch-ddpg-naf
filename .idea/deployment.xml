@@ -2,6 +2,13 @@
 <project version="4">
   <component name="PublishConfigData" autoUpload="Always" showNewOnTargetInSync="false">
     <serverData>
+      <paths name="DL0@192.168.20.101">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/tmp/hossein_experiments" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="DL1@192.168.20.125:22">
         <serverdata>
           <mappings>
