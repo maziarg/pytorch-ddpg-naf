@@ -63,7 +63,7 @@ parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
                     help='max episode length (default: 1000)')
 
 parser.add_argument('--num_episodes', type=int, default=1000, metavar='N',
-                    help='number of episodes (default: 1500)')
+                    help='number of episodes (default: 1000)')
 
 parser.add_argument('--updates_per_step', type=int, default=5, metavar='N',
                     help='model updates per simulator step (default: 5)')
