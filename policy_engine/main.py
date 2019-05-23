@@ -219,9 +219,9 @@ for i_episode in range(args.num_episodes):
         action = torch.Tensor(action.cpu())
         mask = torch.Tensor([not done])
         next_state = torch.Tensor([next_state])
-        reward = torch.Tensor([reward])
         modified_reward,flag_absorbing_state = make_reward_sparse(env=env, flag_sparse=args.sparse_reward, reward=reward,
                                              threshold_sparcity=args.threshold_sparcity, negative_reward_flag=args.reward_negative,num_steps=args.num_steps)
+        modified_reward = torch.Tensor([modified_reward])
         memory.push(state, action, mask, next_state, modified_reward)
         previous_state = state
         state = next_state
@@ -258,7 +258,7 @@ for i_episode in range(args.num_episodes):
                                                                        threshold_sparcity=args.threshold_sparcity,
                                                                        negative_reward_flag=args.reward_negative, num_steps=args.num_steps)
 
-            episode_modified_reward+=modified_reward.item()
+            episode_modified_reward+=modified_reward
             next_state = torch.Tensor([next_state])
             state = next_state
             if done or flag_absorbing_state:
