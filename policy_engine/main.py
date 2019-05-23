@@ -81,10 +81,10 @@ parser.add_argument('--batch_size', type=int, default=128, metavar='N',
 parser.add_argument('--tau', type=float, default=0.001, metavar='G',
                     help='discount factor for model (default: 0.001)')
 
-parser.add_argument('--lr_actor', type=float, default=1e-4,
+parser.add_argument('--lr_actor', type=float, default=1e-3,
                     help='learning rate for actor policy')
 
-parser.add_argument('--lr_critic', type=float, default=1e-4,
+parser.add_argument('--lr_critic', type=float, default=1e-3,
                     help='learning rate for critic policy')
 
 # Note: The following noise are for the behavioural policy of the pure DDPG without the poly_rl policy
