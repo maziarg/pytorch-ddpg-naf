@@ -44,7 +44,7 @@ parser.add_argument('-o', '--output_path', default=os.path.expanduser('~') + '/r
 parser.add_argument('--sparse_reward', action='store_false',
                     help='for making reward sparse. Default=True')
 
-parser.add_argument('--env_name', default="RoboschoolHopper-v1",
+parser.add_argument('--env_name', default="RoboschoolAnt-v1",
                     help='name of the environment to run')
 
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
