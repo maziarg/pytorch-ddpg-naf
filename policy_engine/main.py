@@ -59,8 +59,8 @@ parser.add_argument('--seed', type=int, default=4, metavar='N',
 parser.add_argument('--reward_negative', action='store_false',
                     help='Determines if we can have neagative reward (Default True)')
 
-parser.add_argument('--num_steps', type=int, default=1000, metavar='N',
-                    help='max episode length (default: 1000)')
+parser.add_argument('--num_steps', type=int, default=20, metavar='N',
+                    help='max episode length (default: 20)')
 
 parser.add_argument('--num_episodes', type=int, default=1000, metavar='N',
                     help='number of episodes (default: 1000)')
