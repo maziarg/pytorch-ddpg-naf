@@ -113,13 +113,13 @@ parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
 
 # *********************************** Poly_Rl Setting ********************************************
 
-parser.add_argument('--betta', type=float, default=0.001)
+parser.add_argument('--betta', type=float, default=0.0001)
 
 parser.add_argument('--epsilon', type=float, default=0.999)
 
-parser.add_argument('--sigma_squared', type=float, default=0.0012)
+parser.add_argument('--sigma_squared', type=float, default=0.00007)
 
-parser.add_argument('--lambda_', type=float, default=0.12)
+parser.add_argument('--lambda_', type=float, default=0.035)
 
 # retrieve arguments set by the user
 args = parser.parse_args()
