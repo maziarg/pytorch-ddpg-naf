@@ -272,11 +272,11 @@ for i_episode in range(args.num_episodes):
         rewards.append(episode_reward)
         Final_results["reward"].append(episode_reward)
         Final_results["modified_reward"].append(episode_modified_reward)
-        last_x_body = env.env.body_xyz[0]
-        writer.add_scalar('x_body', last_x_body, i_episode)
+        # last_x_body = env.env.body_xyz[0]
+        # writer.add_scalar('x_body', last_x_body, i_episode)
         logger.info(
-            "Episode: {}, time:{}, numsteps in the episode: {}, total steps so far: {}, x_body: {}, reward: {}, modified_reward {}".format(
-                i_episode, time_len, total_numsteps_episode, total_numsteps, last_x_body, episode_reward, episode_modified_reward))
+            "Episode: {}, time:{}, numsteps in the episode: {}, total steps so far: {}, reward: {}, modified_reward {}".format(
+                i_episode, time_len, total_numsteps_episode, total_numsteps, episode_reward, episode_modified_reward))
 
     with open(file_path_results + '/result_reward.pkl', 'wb') as handle:
         pickle.dump(Final_results, handle)
