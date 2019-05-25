@@ -134,7 +134,7 @@ logging.getLogger().addHandler(logging.StreamHandler())
 
 logger.info("=================================================================================")
 Config_exeriment = "\n Experiment Configuration:\n*Algorithm: " + str(args.algo) + "\n*Output_path result: " + \
-                   str(args.output_path) + "\n*sparse_reward: " + str(
+                   str(file_path_results) + "\n*sparse_reward: " + str(
     args.sparse_reward) + "\n*Environment Name: " + str(
     args.env_name) + \
                    "\n*Gamma " + str(args.gamma) + "\n*Max episode steps length: " + str(
