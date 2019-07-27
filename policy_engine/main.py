@@ -44,13 +44,13 @@ parser.add_argument('-o', '--output_path', default=os.path.expanduser('~') + '/r
 parser.add_argument('--sparse_reward', action='store_false',
                     help='for making reward sparse. Default=True')
 
-parser.add_argument('--env_name', default="RoboschoolHopper-v1",
+parser.add_argument('--env_name', default="RoboschoolHalfCheetah-v1",
                     help='name of the environment to run')
 
 parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
                     help='discount factor for reward (default: 0.99)')
 
-parser.add_argument('--threshold_sparcity', type=float, default=1, metavar='G',
+parser.add_argument('--threshold_sparcity', type=float, default=1.15, metavar='G',
                     help='threshold_sparcity for rewards (default: 0.15)')
 
 parser.add_argument('--seed', type=int, default=4, metavar='N',
@@ -119,7 +119,7 @@ parser.add_argument('--epsilon', type=float, default=0.999)
 
 parser.add_argument('--sigma_squared', type=float, default=0.00007)
 
-parser.add_argument('--lambda_', type=float, default=0.035)
+parser.add_argument('--lambda_', type=float, default=0.087)
 
 # retrieve arguments set by the user
 args = parser.parse_args()
