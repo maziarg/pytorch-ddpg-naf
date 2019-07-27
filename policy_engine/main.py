@@ -24,6 +24,7 @@ from policy_engine.mod_reward import *
 from policy_engine.poly_rl import *
 from policy_engine.ddpg import DDPG
 from policy_engine.naf import NAF
+from policy_engine.param_noise import *
 from policy_engine.normalized_actions import NormalizedActions
 from policy_engine.ounoise import OUNoise
 from policy_engine.replay_memory import ReplayMemory, Transition
@@ -92,14 +93,16 @@ parser.add_argument('--ou_noise', type=bool, default=True,
                     help="This is the noise used for the pure version DDPG (without poly_rl_exploration)"
                          " where the behavioural policy has perturbation in only mean of target policy")
 
+parser.add_argument('--param_noise', type=bool, default=True)
+
 parser.add_argument('--noise_scale', type=float, default=0.3, metavar='G',
                     help='initial noise scale (default: 0.3)')
 
 parser.add_argument('--final_noise_scale', type=float, default=0.3, metavar='G',
                     help='final noise scale (default: 0.3)')
 
-parser.add_argument('--poly_rl_exploration_flag', action='store_false',
-                    help='for using poly_rl exploration. Default=True')
+parser.add_argument('--poly_rl_exploration_flag', action='store_true',
+                    help='for using poly_rl exploration. Default=False')
 
 parser.add_argument('--exploration_end', type=int, default=100, metavar='N',
                     help='number of episodes with noise (default: 100)')
@@ -124,6 +127,9 @@ parser.add_argument('--lambda_', type=float, default=0.087)
 # retrieve arguments set by the user
 args = parser.parse_args()
 
+param_noise = AdaptiveParamNoiseSpec(initial_stddev=0.05,
+    desired_action_stddev=args.noise_scale, adaptation_coefficient=1.05) if args.param_noise else None
+
 # configuring logging
 file_path_results = args.output_path + "/" + str(datetime.datetime.now()).replace(" ", "_")
 if not os.path.exists(args.output_path):
@@ -134,7 +140,8 @@ logging.getLogger().addHandler(logging.StreamHandler())
 
 logger.info("=================================================================================")
 Config_exeriment = "\n Experiment Configuration:\n*Algorithm: " + str(args.algo) + "\n*Output_path result: " + \
-                   str(args.output_path) + "\n*sparse_reward: " + str(
+                   str(args.output_path) + "\n*Param noise Flag: " + \
+                   str(args.param_noise) +"\n*sparse_reward: " + str(
     args.sparse_reward) + "\n*Environment Name: " + str(
     args.env_name) + \
                    "\n*Gamma " + str(args.gamma) + "\n*Max episode steps length: " + str(
@@ -174,6 +181,10 @@ else:
                  lr_actor=args.lr_actor, lr_critic=args.lr_critic)
 
 poly_rl_alg = None
+
+if args.param_noise and args.algo == "DDPG":
+        agent.perturb_actor_parameters(param_noise)
+
 if (args.poly_rl_exploration_flag):
     poly_rl_alg = PolyRL(gamma=args.gamma, betta=args.betta, epsilon=args.epsilon, sigma_squared=args.sigma_squared,
                          actor_target_function=agent.select_action_from_target_actor, env=env, lambda_=args.lambda_)
@@ -211,7 +222,7 @@ for i_episode in range(args.num_episodes):
     while (counter < args.num_steps):
         total_numsteps += 1
         action = agent.select_action(state=state, action_noise=ounoise, previous_action=previous_action, tensor_board_writer=writer,
-                                     step_number=total_numsteps)
+                                     step_number=total_numsteps,param_noise=param_noise)
         previous_action = action
         next_state, reward, done, info_ = env.step(action.cpu().numpy()[0])
         total_numsteps_episode += 1
@@ -242,6 +253,14 @@ for i_episode in range(args.num_episodes):
 
     writer.add_scalar('reward/train', episode_reward, i_episode)
     rewards.append(episode_reward)
+    if args.param_noise:
+        episode_transitions = memory.memory[memory.position - counter:memory.position]
+        states = torch.cat([transition[0] for transition in episode_transitions], 0)
+        unperturbed_actions = agent.select_action(states, None, None)
+        perturbed_actions = torch.cat([transition[1] for transition in episode_transitions], 0)
+
+        ddpg_dist = ddpg_distance_metric(perturbed_actions.numpy(), unperturbed_actions.numpy())
+        param_noise.adapt(ddpg_dist)
 
     # This section is for computing the target policy perfomance
     # The environment is reset every 10 episodes automatically and we compute the target policy reward.

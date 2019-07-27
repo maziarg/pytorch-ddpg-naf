@@ -116,6 +116,7 @@ class DDPG(object):
         self.action_space = action_space
         self.poly_rl_exploration_flag=poly_rl_exploration_flag
         self.actor = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
+        self.actor_perturbed = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.actor_target = Actor(hidden_size, self.num_inputs, self.action_space).to(self.device)
         self.actor_optim = SGD(self.actor.parameters(), lr=lr_actor, momentum=0.9)
         self.critic = Critic(hidden_size, self.num_inputs, self.action_space).to(self.device)
@@ -123,15 +124,19 @@ class DDPG(object):
         self.critic_optim = SGD(self.critic.parameters(), lr=lr_critic, momentum=0.9)
         self.gamma = gamma
         self.tau = tau
+
         hard_update(self.actor_target, self.actor)  # Make sure target is with the same weight
         hard_update(self.critic_target, self.critic)
 
     #This is where the behavioural policy is called
-    def select_action(self, state, tensor_board_writer,step_number,action_noise=None,previous_action=None):
+    def select_action(self, state, tensor_board_writer,step_number,action_noise=None,previous_action=None, param_noise=None):
         if self.poly_rl_exploration_flag is False:
             #
             self.actor.eval()
-            mu = self.actor((Variable(state).to(self.device)))
+            if param_noise is not None:
+                mu = self.actor_perturbed((Variable(state)))
+            else:
+                mu = self.actor((Variable(state)))
             self.actor.train()
             mu = mu.data
 
@@ -141,6 +146,16 @@ class DDPG(object):
             return mu.clamp(-1, 1)
         else:
             return self.poly_rl_alg.select_action(state,previous_action,tensor_board_writer=tensor_board_writer,step_number=step_number)
+
+    def perturb_actor_parameters(self, param_noise):
+        """Apply parameter noise to actor model, for exploration"""
+        hard_update(self.actor_perturbed, self.actor)
+        params = self.actor_perturbed.state_dict()
+        for name in params:
+            if 'ln' in name:
+                pass
+            param = params[name]
+            param += torch.randn(param.shape) * param_noise.current_stddev
 
     #This function samples from target policy for test
     def select_action_from_target_actor(self,state):
